@@ -200,7 +200,7 @@ wind_vector = wind_speed*np.ones(len(time))
 #wind_vector[1:] = wind_speed*1.5
 
 pitch_lst = -2*np.ones(len(time))
-#pitch_lst[1:] = 0
+pitch_lst[1:] = 0
 
 
 Results = results(len(time), N_radial)
