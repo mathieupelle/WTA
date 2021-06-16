@@ -384,18 +384,69 @@ class BEMT:
 
                 
                 
-        #Store all the results in a dictionary
+        #Store all the results in a dictionary for output
         Cp_lambda = {'TSR': TSR_list,
                      'theta': theta_list,
                      'CP':CP,
                      'CT':CT,
                      'CQ':CQ}
         
+        #Also store them in the object for the pitch determination from CT
+        self.Cp_lambda = Cp_lambda
+        
         #Assign back the original pitch angle
         self.Rotor.theta = theta_org
         
         return Cp_lambda
-                                             
+    
+    def getPitchAngle_fromCT(self,CT,TSR):
+        """
+        Interpolate the pitch angle based on a desired thrust coefficient. It uses the CP-Theta-TSR contours generated before.
+
+        Parameters
+        ----------
+        CT : Float
+            Desired CT which pitch we want to know.
+        TSR : Float
+            Operational tip speed ratio of the evaluation point.
+
+        Raises
+        ------
+        Exception
+            It needs to have the atribute Cp_lambda generated beforehand.
+
+        Returns
+        -------
+        Theta: Float [DEGREES]
+            Interpolated pitch angle corresponding to the required CT.
+
+        """
+        #Firstly, check if the Cp-pitch-lambda contours exist
+        if hasattr(self, 'Cp_lambda'):
+            pass
+        else: 
+            raise Exception("No Cp_lambda variable found. Please run BEMT.CpLambda(TSR_list,theta_list) to generate it so I can interpolate. Thanks")
+        
+        #Unpack the necessary variables for readibility
+        CT_mat = self.Cp_lambda['CT']
+        theta_lst = self.Cp_lambda['theta']
+        TSR_lst = self.Cp_lambda['TSR']
+        
+        #Interpolate firstly across TSR 
+        CT_lst = [] #Initialise array of CT vs pitch
+        for i in range(len(theta_lst)):
+            CT_lst.append(np.interp(TSR,TSR_lst,CT_mat[:,i]))
+            
+        #Sort CT and theta arrays for the second interpolation
+        CT_arr = np.array(CT_lst)
+        theta_arr = np.array(theta_lst)
+        idxs = CT_arr.argsort() #Get indices of sorted array
+        CT_arr = CT_arr[idxs]
+        theta_arr = theta_arr[idxs]
+        
+        #Interpolate the pitch value fiven the desired CT and return it
+        return np.interp(CT,CT_arr,theta_arr)
+                                                             
 
 class Optimizer:
     def __init__(self, Rotor_original, a, TSR):
