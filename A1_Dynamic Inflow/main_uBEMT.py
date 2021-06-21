@@ -33,7 +33,7 @@ for i,val in enumerate(CT_step['cases']):
     #Store the pitch values in the dictionary of the CT_step summary
     CT_step['pitch'].append(pitch_angle)
     
-    #Build conditions dictionary necessary for the calculation of the unsteady BEMT    
+    #Build conditions dictionary necessary for the calculation of the unsteady BEMT
     time_arr = np.linspace(0,10)
     cond = {'wind_speed': 10*np.ones(len(time_arr)),
         'pitch_angle': np.concatenate((np.array(pitch_angle),pitch_angle[1]*np.ones(len(time_arr)-2)),axis=None),

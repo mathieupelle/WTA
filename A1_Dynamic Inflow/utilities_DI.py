@@ -324,7 +324,43 @@ class BEMT:
         a_new = -v/wind_speed
         return a_new
 
-
+    def Oye(self, vint1, a1, CT2, r, dt, wind_speed):
+        # UNDER CONSTRUCTION
+        # 1 - old time step
+        # 2 - new time step
+        
+        # calculate quasi-steady induced velocity
+        vqs1 = a1 * wind_speed
+        
+        # calculate current induced velocity
+        vz1 = -a1 * wind_speed
+        
+        # calculate model time scales
+        t1 = (1.1 / (1-1.3*a1)) * (self.rotor.radius/wind_speed)
+        t2 = (0.39-0.26*(r/self.rotor.radius)**2)*t1 # from Carlos' Jupyter notebook
+        # t2 = ((r/self.rotor.radius)**2)*t1 # from slides
+        
+        # next-time-step quasi-steady induction velocity
+        vqs2 = self.NewInductionFactor(CT2,yaw=0) * wind_speed
+        
+        # time derivative of intermediate velocity
+        dvint_dt = (1/t1) * (vqs1 + 0.6*t1*((vqs2 - vqs1)/dt) - vint1)
+        
+        # new intermediate velocity
+        vint2 = vint1 + dvint_dt*dt
+        
+        # time derivative of induced velocity
+        dvz_dt = (1/t2) * (((vint1 + vint2)/2) - vz1)
+        
+        # calculate new induced velocity
+        vz2 = vz1 + dvz_dt*dt
+        
+        # calculate new induction factor
+        a2 = -vz2 / wind_speed
+        
+        return a2, vint2
+        
+        
     def NewCT(self,a, glauert=True):
         CT = 4*a*(1-a)
         if glauert:
