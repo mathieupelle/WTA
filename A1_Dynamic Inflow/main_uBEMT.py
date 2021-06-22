@@ -7,6 +7,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from utilities_uBEMT import Rotor,BEMT
+    
 
 #%% Case A: Dynamic inflow due to change in rotor configuration  
 # A.1 Step change in thrust coefficient
@@ -24,7 +25,8 @@ CT_step = {'cases':[[0.5,0.9],
 Calc = BEMT(Geometry) #Firstly initialize the BEMT class to compute the calculations
 Calc.CpLambda(TSR_list = [10], theta_list = list(np.linspace(-7,5))) #Calculate the Cp/Ct-theta-tsr contours
 
-#Loop through each of these cases
+#%% Loop through each of these cases
+CT_step['results'] = []
 for i,val in enumerate(CT_step['cases']):
     #Get the pitch angle for each value of the step
     pitch_angle = [Calc.getPitchAngle_fromCT(CT = val[0], TSR = 10), Calc.getPitchAngle_fromCT(CT = val[1], TSR = 10)]
@@ -39,10 +41,14 @@ for i,val in enumerate(CT_step['cases']):
         'yaw_angle': np.zeros(len(time_arr))}
     
     #Run BEMT
+    print('Running case',i+1,'out of',len(CT_step)+1)
     Calc.Solver(time = time_arr, conditions = cond, DI_Model = "PP")
     
     #Store the results in the summary dictionary
     CT_step['results'].append(Calc.Results)
+    
+test = CT_step['results'][3]
+plt.plot(time_arr,np.mean(test.a,axis=0)[0,:])
     
     
 #%% A.2 - Sinusoidal change in quasi-steady thrust coefficient
