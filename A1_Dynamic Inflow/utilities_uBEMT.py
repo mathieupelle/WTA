@@ -263,7 +263,13 @@ class BEMT:
                             else:
                                  if DI_Model == "PP":
                                      a_new = self.Pitt_Peters(CT, self.Results.a[i,j,t_idx-1]*self.Results.f[i,j,t_idx-1], mu*self.Rotor.radius, dt, self.Rotor.wind_speed)
-                            
+                                 elif DI_Model == "LM":
+                                     CT_qs = self.getCT_fromPitchAngle(self.Rotor.theta, self.Rotor.TSR) #Calculate quasi-steady CT based on CT_pitch contours
+                                     # Check inputs
+                                     a_new = self.Larsen_Madsen(self.Results.a[i,j,t_idx-1]*self.Results.f[i,j,t_idx-1], CT_qs, mu*self.Rotor.radius, dt, self.Rotor.wind_speed)
+
+                                 else: 
+                                     raise Exception('Its got a C in it. Also you have not selected a model')
                             #Apply the tip and root loss correction factor if wanted
                             if Prandtl_correction:
                                 [f,f_tip,f_root] = self.PrandtlTipCorrection(mu,a_new)
