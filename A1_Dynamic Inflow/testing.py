@@ -19,10 +19,9 @@ cond = {'wind_speed': [10, 10],
 
 time_array = [0,.1]
 Sol = BEMT(Test)
-Sol.Solver(time=time_array,conditions=cond,DI_Model="PP")
-
 #Testing the CP-LAMBDA contours
 Cont = Sol.CpLambda([8,9,10,11], [-5,-4,-3,-2,-1])
+Sol.Solver(time=time_array,conditions=cond,DI_Model="PP")
 
 pitch = Sol.getPitchAngle_fromCT(0.7, 8)
     
