@@ -45,6 +45,14 @@ for i,val in enumerate(CT_step['cases']):
     CT_step['results'].append(Calc.Results)
     
     
+#%% A.2 - Sinusoidal change in quasi-steady thrust coefficient
+
+#Define time array and reduced frequency
+time_arr = np.arange(0,10,0.01)
+omega = np.arange(0.05,0.301,0.05)
+
+
+
 
 
 
