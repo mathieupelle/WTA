@@ -314,8 +314,29 @@ class BEMT:
 #            self.Results.a_global = self.NewInductionFactor(self.Results.CT, self.Rotor.yaw)
 
 
-
     def Pitt_Peters(self, CT, a, r, dt, wind_speed):
+        """
+        
+
+        Parameters
+        ----------
+        CT : TYPE
+            Current thrust coefficient
+        a : TYPE
+            Current induction factor
+        r : TYPE
+            DESCRIPTION.
+        dt : TYPE
+            DESCRIPTION.
+        wind_speed : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        a_new : TYPE
+            DESCRIPTION.
+
+        """
         CT_qs = self.NewCT(a)
         dvdt = 3*m.pi*wind_speed**2/16/r*(CT - CT_qs)
         #print(dvdt)

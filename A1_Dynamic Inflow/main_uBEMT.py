@@ -6,8 +6,7 @@
 #%% Input necessary packages 
 import numpy as np
 import matplotlib.pyplot as plt
-from utilities_DI import Rotor,BEMT
-    
+from utilities_uBEMT import Rotor,BEMT
 
 #%% Case A: Dynamic inflow due to change in rotor configuration  
 # A.1 Step change in thrust coefficient
