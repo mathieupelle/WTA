@@ -444,6 +444,28 @@ class BEMT:
         
         return Cp_lambda
     
+    def getCT_fromPitchAngle(self,theta,TSR):
+        #Firstly, check if the Cp-pitch-lambda contours exist
+        if hasattr(self, 'Cp_lambda'):
+            pass
+        else: 
+            raise Exception("No Cp_lambda variable found. Please run BEMT.CpLambda(TSR_list,theta_list) to generate it so I can interpolate. Thanks")
+        
+        #Unpack the necessary variables for readibility
+        CT_mat = self.Cp_lambda['CT']
+        theta_lst = self.Cp_lambda['theta']
+        TSR_lst = self.Cp_lambda['TSR']
+        
+        #Interpolate firstly across TSR 
+        CT_lst = [] #Initialise array of CT vs pitch
+        for i in range(len(theta_lst)):
+            CT_lst.append(np.interp(TSR,TSR_lst,CT_mat[:,i]))
+        
+        #Interpolate the pitch value fiven the desired CT and return it
+        return np.interp(theta,theta_lst,CT_lst)
+        
+    
+    
     def getPitchAngle_fromCT(self,CT,TSR):
         """
         Interpolate the pitch angle based on a desired thrust coefficient. It uses the CP-Theta-TSR contours generated before.
