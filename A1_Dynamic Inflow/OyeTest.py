@@ -7,7 +7,7 @@ For testing Øye dynamic inflow method BEMT.Oye() from utilities_DI.py
 """
 
 import numpy as np
-from utilities_DI import Rotor,BEMT
+from utilities_uBEMT import Rotor,BEMT
 import matplotlib.pyplot as plt
 
 # create rotor geometry
@@ -52,7 +52,7 @@ vint = a[0] * Test.wind_speed
 # vint = vind[0]
 
 #%% # solve the equation in time of the value of induction by using the Oye model
-for i,val in enumerate(time[:-1]):
+for i,val in enumerate(time[1:]):
     # Carlos' version
     # vind[i+1],vint=oye_dynamic_inflow(vind[i], Ct[i], Ct[i+1], vint, Uinf, R, 0.95*R,dt)
     # def oye_dynamic_inflow(vz, Ct1, Ct2, vint, Uinf, R, r,dt,glauert=False)
@@ -60,7 +60,8 @@ for i,val in enumerate(time[:-1]):
     # Our version
     # a[i] = vind[i] / Test.wind_speed
     # vind[i+1], vint = Sol.Oye(a[i], Ct[i], Ct[i+1], vint, Test.radius, dt, Test.wind_speed)
-    a[i+1], vint = Sol.Oye(a[i], Ct[i], Ct[i+1], vint, Test.radius, dt, Test.wind_speed)
+    i += 1
+    a[i], vint = Sol.Oye(a[i-1], Ct[i-1], Ct[i], vint, Test.radius, dt, Test.wind_speed)
     # def Oye(a1, CT1, CT2, vint1, r, dt, wind_speed)
     
 #%% Plot
