@@ -339,8 +339,8 @@ class BEMT:
         
         # calculate model time scales
         t1 = (1.1 / (1-1.3*a1)) * (self.Rotor.radius/wind_speed)
-        t2 = (0.39-0.26*(r/self.Rotor.radius)**2)*t1 # from Carlos' Jupyter notebook
-        # t2 = ((r/self.Rotor.radius)**2)*t1 # from slides
+        # t2 = (0.39-0.26*(r/self.Rotor.radius)**2)*t1 # from Carlos' Jupyter notebook
+        t2 = ((r/self.Rotor.radius)**2)*t1 # from slides
         
         # next-time-step quasi-steady induction velocity
         vqs2 = self.NewInductionFactor(CT2) * wind_speed
