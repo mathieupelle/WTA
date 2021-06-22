@@ -153,14 +153,13 @@ class BEMT:
         
         return lift,drag,f_tan,f_nor
     
-    def NewInductionFactor(self,CT,yaw,a=None):
+    def NewInductionFactor(self,CT,a=None):
         """
         Calculate the new axial induction factor for a given CT and yaw angle. 
 
         Parameters
         ----------
         CT : Value of the thrust coefficient we want to evaluate.
-        yaw : Yaw angle at which we are analyzing the rotor.
         a : Previous axial induction factor. Used to solve the quadratic equation for the yawed case.
             Default is None.
             If no input is provided, the a_new returned will be the smallest one from the solution of the quadratic equation.
@@ -172,7 +171,7 @@ class BEMT:
 
         """
         
-        if yaw == 0:
+        if self.Rotor.yaw == 0:
             CT_1 = 1.816 #Constants for the empirical calculation
             CT_2 = 2*np.sqrt(CT_1) - CT_1
             if CT < CT_2:
@@ -183,9 +182,9 @@ class BEMT:
         #Yawed case 
         else: 
             if a:
-                a_new = CT/(4*np.sqrt(1-a*(2*np.cos(yaw)-a))) #If we have the value from previous iteration use it 
+                a_new = CT/(4*np.sqrt(1-a*(2*np.cos(self.Rotor.yaw)-a))) #If we have the value from previous iteration use it 
             else: #Otherwise, solve numerically
-                func = lambda a : 4*a*np.sqrt(1-a*(2*np.cos(yaw)-a)) - CT
+                func = lambda a : 4*a*np.sqrt(1-a*(2*np.cos(self.Rotor.yaw)-a)) - CT
                 a_guess = 1/3
                 a_new = fsolve(func,a_guess)
                 
@@ -260,7 +259,7 @@ class BEMT:
                             
                             #Get new value of axial induction factor
                             if t_idx == 0 or DI_Model == "Steady":
-                                 a_new = self.NewInductionFactor(CT,self.Rotor.yaw,a)
+                                 a_new = self.NewInductionFactor(CT,a)
                             else:
                                  if DI_Model == "PP":
                                      a_new = self.Pitt_Peters(CT, self.Results.a[i,j,t_idx-1]*self.Results.f[i,j,t_idx-1], mu*self.Rotor.radius, dt, self.Rotor.wind_speed)
@@ -324,24 +323,27 @@ class BEMT:
         a_new = -v/wind_speed
         return a_new
 
-    def Oye(self, vint1, a1, CT2, r, dt, wind_speed):
+    def Oye(self, a1, CT1, CT2, vint1, r, dt, wind_speed):
         # UNDER CONSTRUCTION
         # 1 - old time step
         # 2 - new time step
         
+        # ISSUE: we need the current a/CT, the quasi-steady a/CT (i.e. the a/CT that corresponds to the desired a/CT), and the quasi-steady a/CT of the next time step, but currently we have the quasi-steady pitch angle, not the CT, as input, so we may need to add quasi-steady CT as an input to Solver(), or have a way of calculating the CT from the pitch angle, which seems like having to run BEM again (not worthwhile)
+        
         # calculate quasi-steady induced velocity
-        vqs1 = a1 * wind_speed
+        # vqs1 = a1 * wind_speed
+        vqs1 = self.NewInductionFactor(CT1) * wind_speed
         
         # calculate current induced velocity
-        vz1 = -a1 * wind_speed
+        vz1 = a1 * wind_speed
         
         # calculate model time scales
-        t1 = (1.1 / (1-1.3*a1)) * (self.rotor.radius/wind_speed)
-        t2 = (0.39-0.26*(r/self.rotor.radius)**2)*t1 # from Carlos' Jupyter notebook
-        # t2 = ((r/self.rotor.radius)**2)*t1 # from slides
+        t1 = (1.1 / (1-1.3*a1)) * (self.Rotor.radius/wind_speed)
+        t2 = (0.39-0.26*(r/self.Rotor.radius)**2)*t1 # from Carlos' Jupyter notebook
+        # t2 = ((r/self.Rotor.radius)**2)*t1 # from slides
         
         # next-time-step quasi-steady induction velocity
-        vqs2 = self.NewInductionFactor(CT2,yaw=0) * wind_speed
+        vqs2 = self.NewInductionFactor(CT2) * wind_speed
         
         # time derivative of intermediate velocity
         dvint_dt = (1/t1) * (vqs1 + 0.6*t1*((vqs2 - vqs1)/dt) - vint1)
@@ -356,9 +358,9 @@ class BEMT:
         vz2 = vz1 + dvz_dt*dt
         
         # calculate new induction factor
-        a2 = -vz2 / wind_speed
+        # a2 = -vz2 / wind_speed
         
-        return a2, vint2
+        return vz2, vint2
         
         
     def NewCT(self,a, glauert=True):
