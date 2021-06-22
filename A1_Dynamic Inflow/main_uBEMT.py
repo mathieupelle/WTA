@@ -15,13 +15,16 @@ from utilities_uBEMT import Rotor,BEMT
 Geometry = Rotor(N_radial_sections = 30) #Define the rotor geometry
 
 #Define which steps do we want to analyse. This will be the summary variable for all the case
-CT_step = {'cases':[[0.5,0.9],
+CT_step = {'cases':[[0.5,0.5],
            [0.9,0.5],
            [0.2,1.1],
            [1.1,0.4]],
            'pitch':[],
            'results':[]}
 
+CT_step = {'cases':[[0.5,0.9]],
+           'pitch':[],
+           'results':[]}
 Calc = BEMT(Geometry) #Firstly initialize the BEMT class to compute the calculations
 Calc.CpLambda(TSR_list = [10], theta_list = list(np.linspace(-7,5))) #Calculate the Cp/Ct-theta-tsr contours
 
@@ -41,14 +44,15 @@ for i,val in enumerate(CT_step['cases']):
         'yaw_angle': np.zeros(len(time_arr))}
     
     #Run BEMT
-    print('Running case',i+1,'out of',len(CT_step)+1)
-    Calc.Solver(time = time_arr, conditions = cond, DI_Model = "PP")
+    print('Running case',i+1,'out of',len(CT_step['cases'])+1)
+    Calc.Solver(time = time_arr, conditions = cond, DI_Model = "LM")
     
     #Store the results in the summary dictionary
     CT_step['results'].append(Calc.Results)
     
-test = CT_step['results'][3]
+test = CT_step['results'][0]
 plt.plot(time_arr,np.mean(test.a,axis=0)[0,:])
+plt.plot(time_arr,test.CT)
     
     
 #%% A.2 - Sinusoidal change in quasi-steady thrust coefficient

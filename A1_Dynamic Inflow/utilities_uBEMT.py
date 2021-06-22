@@ -11,7 +11,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.optimize import least_squares,fsolve
 import math as m
-import time
+from time import sleep
 import warnings
 
 
@@ -265,7 +265,7 @@ class BEMT:
                                      a_new = self.Pitt_Peters(CT, self.Results.a[i,j,t_idx-1]*self.Results.f[i,j,t_idx-1], mu*self.Rotor.radius, dt, self.Rotor.wind_speed)
                                  elif DI_Model == "LM":
                                      CT_qs = self.getCT_fromPitchAngle(self.Rotor.theta, self.Rotor.TSR) #Calculate quasi-steady CT based on CT_pitch contours
-                                     a_new = self.Larsen_Madsen(self.Results.a[i,j,t_idx-1]*self.Results.f[i,j,t_idx-1], CT_qs, mu*self.Rotor.radius, dt, self.Rotor.wind_speed)
+                                     a_new = self.Larsen_Madsen(self.Results.a[i,j,t_idx-1]*self.Results.f[i,j,t_idx-1], self.Results.local_CT[i,j,t_idx-1], mu*self.Rotor.radius, dt, self.Rotor.wind_speed)
                                  elif DI_Model == "O":
                                      #Calculate CT quasi-steady of the current time-step (from contours)
                                      CT_qs = self.getCT_fromPitchAngle(self.Rotor.theta, self.Rotor.TSR) #Calculate quasi-steady CT based on CT_pitch contours
@@ -273,15 +273,15 @@ class BEMT:
                                      #Calculate CT qs of PREVIOUS time-step
                                      theta_previous = conditions['pitch_angle'][t_idx-1] #We need to know the pitch of the previous time-step
                                      CT_qs_previous = self.getCT_fromPitchAngle(theta_previous, self.Rotor.TSR)
-                                     
-                                     #Check
+
                                      if 'v_int' in locals():
                                          pass
                                      else:
-                                         v_int = self.NewInductionFactor(CT_qs_previous)
-                                     a_new,v_int = self.Oye(self.Results.a[i,j,t_idx-1]*self.Results.f[i,j,t_idx-1], CT_qs_previous, CT_qs, v_int, mu*self.Rotor.radius, dt, self.Rotor.wind_speed)
+                                         v_int = -self.NewInductionFactor(self.Results.local_CT[i,j,t_idx-1])*self.Rotor.wind_speed
+                                     a_new,v_int = self.Oye(self.Results.a[i,j,t_idx-1]*self.Results.f[i,j,t_idx-1], self.Results.local_CT[i,j,t_idx-1], CT, v_int, mu*self.Rotor.radius, dt, self.Rotor.wind_speed)
                                  else: 
                                      raise Exception('Its got a C in it. Also you have not selected a model')
+
                             #Apply the tip and root loss correction factor if wanted
                             if Prandtl_correction:
                                 [f,f_tip,f_root] = self.PrandtlTipCorrection(mu,a_new)
@@ -378,10 +378,10 @@ class BEMT:
         
         # calculate quasi-steady induced velocity
         # vqs1 = a1 * wind_speed
-        vqs1 = self.NewInductionFactor(CT1) * wind_speed
+        vqs1 = -self.NewInductionFactor(CT1) * wind_speed
         
         # calculate current induced velocity
-        vz1 = a1 * wind_speed
+        vz1 =-    a1 * wind_speed
         
         # calculate model time scales
         t1 = (1.1 / (1-1.3*a1)) * (self.Rotor.radius/wind_speed)
@@ -389,7 +389,7 @@ class BEMT:
         # t2 = ((r/self.Rotor.radius)**2)*t1 # from slides
         
         # next-time-step quasi-steady induction velocity
-        vqs2 = self.NewInductionFactor(CT2) * wind_speed
+        vqs2 = -self.NewInductionFactor(CT2) * wind_speed
         
         # time derivative of intermediate velocity
         dvint_dt = (1/t1) * (vqs1 + 0.6*t1*((vqs2 - vqs1)/dt) - vint1)
@@ -404,7 +404,7 @@ class BEMT:
         vz2 = vz1 + dvz_dt*dt
         
         # calculate new induction factor
-        a2 = vz2 / wind_speed
+        a2 = -vz2 / wind_speed
         
         return a2, vint2
         
