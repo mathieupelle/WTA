@@ -404,9 +404,9 @@ class BEMT:
         vz2 = vz1 + dvz_dt*dt
         
         # calculate new induction factor
-        # a2 = -vz2 / wind_speed
+        a2 = vz2 / wind_speed
         
-        return vz2, vint2
+        return a2, vint2
         
         
     def NewCT(self,a, glauert=True):
