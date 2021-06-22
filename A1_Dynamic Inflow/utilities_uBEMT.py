@@ -322,6 +322,13 @@ class BEMT:
         v = -a*wind_speed - dvdt*dt
         a_new = -v/wind_speed
         return a_new
+    
+    def Larsen_Madsen(self, a, CT, r, dt, wind_speed):
+        vz = -a * wind_speed #calculate induced velocity from a(i)
+        tau = 0.5*r/(wind_speed + vz)
+        a_qs = self.NewInductionFactor(CT) #calculate a_qs from CT(i+1)
+        a_new = a*np.exp(-dt/tau) + a_qs*(1-np.exp(-dt/tau))
+        return a_new
 
     def Oye(self, a1, CT1, CT2, vint1, r, dt, wind_speed):
         # UNDER CONSTRUCTION
@@ -339,8 +346,8 @@ class BEMT:
         
         # calculate model time scales
         t1 = (1.1 / (1-1.3*a1)) * (self.Rotor.radius/wind_speed)
-        # t2 = (0.39-0.26*(r/self.Rotor.radius)**2)*t1 # from Carlos' Jupyter notebook
-        t2 = ((r/self.Rotor.radius)**2)*t1 # from slides
+        t2 = (0.39-0.26*(r/self.Rotor.radius)**2)*t1 # from Carlos' Jupyter notebook
+        # t2 = ((r/self.Rotor.radius)**2)*t1 # from slides
         
         # next-time-step quasi-steady induction velocity
         vqs2 = self.NewInductionFactor(CT2) * wind_speed
