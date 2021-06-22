@@ -6,7 +6,7 @@ Created on Tue Jun 15 19:28:40 2021
 """
 import numpy as np
 import matplotlib.pyplot as plt
-from utilities_UBEMT import Rotor,BEMT,Optimizer,MeshSensitivity,plot_optimized_geometry,plot_mesh_sensitivity
+from utilities_uBEMT import Rotor,BEMT,Optimizer,MeshSensitivity,plot_optimized_geometry,plot_mesh_sensitivity
     
 
 #TESTING
@@ -21,11 +21,11 @@ time_array = [0,.1]
 Sol = BEMT(Test)
 #Testing the CP-LAMBDA contours
 Cont = Sol.CpLambda([8,9,10,11], [-5,-4,-3,-2,-1])
-Sol.Solver(time=time_array,conditions=cond,DI_Model="PP")
+Sol.Solver(time=time_array,conditions=cond,DI_Model="LM")
 
 pitch = Sol.getPitchAngle_fromCT(0.7, 8)
     
-
+CT = Sol.getCT_fromPitchAngle(-3,8)
     
 plt.figure()
 plt.plot(Sol.Results.a[:,0,0])
