@@ -48,7 +48,7 @@ a[0] = a0 # we initialize the first value to the induction factor at t0, calcula
 # vind[0] = vind0 # we initialize the first value to the induction velocity at t0, calculated from Ct0
 
 # the Oye model requires the use of a temporary value of induction vint. Here, we initialize the value of vint
-vint = a[0] * Test.wind_speed
+vint = -a[0] * Test.wind_speed
 # vint = vind[0]
 
 #%% # solve the equation in time of the value of induction by using the Oye model

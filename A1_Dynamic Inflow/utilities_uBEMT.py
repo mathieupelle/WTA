@@ -366,10 +366,10 @@ class BEMT:
         
         # calculate quasi-steady induced velocity
         # vqs1 = a1 * wind_speed
-        vqs1 = self.NewInductionFactor(CT1) * wind_speed
+        vqs1 = -self.NewInductionFactor(CT1) * wind_speed
         
         # calculate current induced velocity
-        vz1 = a1 * wind_speed
+        vz1 = -a1 * wind_speed
         
         # calculate model time scales
         t1 = (1.1 / (1-1.3*a1)) * (self.Rotor.radius/wind_speed)
@@ -377,7 +377,7 @@ class BEMT:
         # t2 = ((r/self.Rotor.radius)**2)*t1 # from slides
         
         # next-time-step quasi-steady induction velocity
-        vqs2 = self.NewInductionFactor(CT2) * wind_speed
+        vqs2 = -self.NewInductionFactor(CT2) * wind_speed
         
         # time derivative of intermediate velocity
         dvint_dt = (1/t1) * (vqs1 + 0.6*t1*((vqs2 - vqs1)/dt) - vint1)
@@ -392,7 +392,7 @@ class BEMT:
         vz2 = vz1 + dvz_dt*dt
         
         # calculate new induction factor
-        a2 = vz2 / wind_speed
+        a2 = -vz2 / wind_speed
         
         return a2, vint2
         
