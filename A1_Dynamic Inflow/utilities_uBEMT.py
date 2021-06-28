@@ -267,18 +267,17 @@ class BEMT:
                                      CT_qs = self.getCT_fromPitchAngle(self.Rotor.theta, self.Rotor.TSR) #Calculate quasi-steady CT based on CT_pitch contours
                                      a_new = self.Larsen_Madsen(self.Results.a[i,j,t_idx-1]*self.Results.f[i,j,t_idx-1], self.Results.local_CT[i,j,t_idx-1], mu*self.Rotor.radius, dt, self.Rotor.wind_speed)
                                  elif DI_Model == "O":
-                                     #Calculate CT quasi-steady of the current time-step (from contours)
-                                     CT_qs = self.getCT_fromPitchAngle(self.Rotor.theta, self.Rotor.TSR) #Calculate quasi-steady CT based on CT_pitch contours
-                                     
-                                     #Calculate CT qs of PREVIOUS time-step
-                                     theta_previous = conditions['pitch_angle'][t_idx-1] #We need to know the pitch of the previous time-step
-                                     CT_qs_previous = self.getCT_fromPitchAngle(theta_previous, self.Rotor.TSR)
-
                                      if 'v_int' in locals():
                                          pass
                                      else:
                                          v_int = -self.NewInductionFactor(self.Results.local_CT[i,j,t_idx-1])*self.Rotor.wind_speed
-                                     a_new,v_int = self.Oye(self.Results.a[i,j,t_idx-1]*self.Results.f[i,j,t_idx-1], self.Results.local_CT[i,j,t_idx-1], CT, v_int, mu*self.Rotor.radius, dt, self.Rotor.wind_speed)
+                                         if np.isnan(v_int):
+                                             print(ite,self.Results.local_CT[i,j,t_idx-1])
+                                             breakpoint()
+                                     a_new,v_int = self.Oye(a*f, self.Results.local_CT[i,j,t_idx-1], CT, v_int, mu*self.Rotor.radius, dt, self.Rotor.wind_speed)
+                                     if ite % 1 == 0:
+                                         print(ite,a-a_new,v_int,CT)
+                                         pass
                                  else: 
                                      raise Exception('Its got a C in it. Also you have not selected a model')
 
@@ -405,6 +404,7 @@ class BEMT:
         
         # calculate new induction factor
         a2 = -vz2 / wind_speed
+        #print(vint1,vz2,CT1,CT2,t1,t2)
         
         return a2, vint2
         

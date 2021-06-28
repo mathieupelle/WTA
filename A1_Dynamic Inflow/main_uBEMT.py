@@ -38,14 +38,16 @@ for i,val in enumerate(CT_step['cases']):
     CT_step['pitch'].append(pitch_angle)
     
     #Build conditions dictionary necessary for the calculation of the unsteady BEMT
-    time_arr = np.linspace(0,10)
+    time_arr = np.linspace(0,1,20)
     cond = {'wind_speed': 10*np.ones(len(time_arr)),
         'pitch_angle': np.concatenate((np.array(pitch_angle),pitch_angle[1]*np.ones(len(time_arr)-2)),axis=None),
         'yaw_angle': np.zeros(len(time_arr))}
     
+    #cond['pitch_angle'] = 0*np.ones(len(time_arr))
+    
     #Run BEMT
     print('Running case',i+1,'out of',len(CT_step['cases'])+1)
-    Calc.Solver(time = time_arr, conditions = cond, DI_Model = "LM")
+    Calc.Solver(time = time_arr, conditions = cond, DI_Model = "O")
     
     #Store the results in the summary dictionary
     CT_step['results'].append(Calc.Results)
@@ -53,6 +55,9 @@ for i,val in enumerate(CT_step['cases']):
 test = CT_step['results'][0]
 plt.plot(time_arr,np.mean(test.a,axis=0)[0,:])
 plt.plot(time_arr,test.CT)
+plt.legend(['$a$','$C_T$'])
+
+plt.plot(test.mu[:,0,0],test.alpha[:,0,:])
     
     
 #%% A.2 - Sinusoidal change in quasi-steady thrust coefficient
