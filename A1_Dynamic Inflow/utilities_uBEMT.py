@@ -272,11 +272,11 @@ class BEMT:
                                      else:
                                          v_int = -self.NewInductionFactor(self.Results.local_CT[i,j,t_idx-1])*self.Rotor.wind_speed
                                          if np.isnan(v_int):
-                                             print(ite,self.Results.local_CT[i,j,t_idx-1])
+                                           #  print(ite,self.Results.local_CT[i,j,t_idx-1])
                                              breakpoint()
                                      a_new,v_int = self.Oye(a*f, self.Results.local_CT[i,j,t_idx-1], CT, v_int, mu*self.Rotor.radius, dt, self.Rotor.wind_speed)
                                      if ite % 1 == 0:
-                                         print(ite,a-a_new,v_int,CT)
+                                        # print(ite,a-a_new,v_int,CT)
                                          pass
                                  else: 
                                      raise Exception('Its got a C in it. Also you have not selected a model')
