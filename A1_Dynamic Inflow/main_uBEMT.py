@@ -7,7 +7,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from utilities_uBEMT import Rotor,BEMT
-    
+import pickle
+
+#%% Save results?
+saving = True
+   
 
 #%% Case A: Dynamic inflow due to change in rotor configuration  
 # A.1 Step change in thrust coefficient
@@ -15,21 +19,27 @@ from utilities_uBEMT import Rotor,BEMT
 Geometry = Rotor(N_radial_sections = 30) #Define the rotor geometry
 
 #Define which steps do we want to analyse. This will be the summary variable for all the case
-CT_step = {'cases':[[0.5,0.5],
+CT_step = {'cases':[[0.5,0.9],
            [0.9,0.5],
            [0.2,1.1],
            [1.1,0.4]],
-           'pitch':[],
-           'results':[]}
+           'pitch':[]}
 
-CT_step = {'cases':[[0.5,0.9]],
-           'pitch':[],
-           'results':[]}
+#CT_step = {'cases':[[0.5,0.9]],
+#           'pitch':[]}
+
+#Define the models that we want to analyse
+DI_models = ['Steady','PP','LM','O']
+
+#Initialise the results variable
+CT_step['results'] = [[],[],[],[]]
+
+
+
 Calc = BEMT(Geometry) #Firstly initialize the BEMT class to compute the calculations
 Calc.CpLambda(TSR_list = [10], theta_list = list(np.linspace(-7,5))) #Calculate the Cp/Ct-theta-tsr contours
 
 #%% Loop through each of these cases
-CT_step['results'] = []
 for i,val in enumerate(CT_step['cases']):
     #Get the pitch angle for each value of the step
     pitch_angle = [Calc.getPitchAngle_fromCT(CT = val[0], TSR = 10), Calc.getPitchAngle_fromCT(CT = val[1], TSR = 10)]
@@ -39,26 +49,27 @@ for i,val in enumerate(CT_step['cases']):
     
     #Build conditions dictionary necessary for the calculation of the unsteady BEMT
     time_arr = np.linspace(0,1,20)
+    CT_step['time'] = time_arr
     cond = {'wind_speed': 10*np.ones(len(time_arr)),
         'pitch_angle': np.concatenate((np.array(pitch_angle),pitch_angle[1]*np.ones(len(time_arr)-2)),axis=None),
         'yaw_angle': np.zeros(len(time_arr))}
     
     #cond['pitch_angle'] = 0*np.ones(len(time_arr))
     
-    #Run BEMT
-    print('Running case',i+1,'out of',len(CT_step['cases']))
-    Calc.Solver(time = time_arr, conditions = cond, DI_Model = "PP")
+    #Run BEMT for each model
+    for j,model in enumerate(DI_models):
+        print('Running case',i*len(DI_models)+j ,'out of',len(CT_step['cases'])*len(DI_models))
+        Calc.Solver(time = time_arr, conditions = cond, DI_Model = model)
     
-    #Store the results in the summary dictionary
-    CT_step['results'].append(Calc.Results)
+        #Store the results in the summary dictionary
+        print(j,i)
+        CT_step['results'][j].append(Calc.Results)
     
-test = CT_step['results'][0]
-plt.plot(time_arr,np.mean(test.a,axis=0)[0,:])
-plt.plot(time_arr,test.CT)
-plt.legend(['$a$','$C_T$'])
-
-plt.plot(test.mu[:,0,0],test.alpha[:,0,:])
-    
+#Save the results
+if saving:
+    file = open("CT_step.pkl","wb")
+    pickle.dump(CT_step,file)
+    file.close()    
     
 #%% A.2 - Sinusoidal change in quasi-steady thrust coefficient
 
@@ -74,8 +85,12 @@ CT_sin = {'CT_0': [.5,.9,.2],
           'results': [[[None]*3]*len(omega)]*4,
           'omega': omega}
 
-#Select the DI models to test
-DI_models = ['Steady','PP','LM','O']
+#Create the empty results list
+CT_sin['results'] = [[[[],[],[]] for _ in range(len(omega))] for __ in range(len(DI_models))]
+
+#Store time array
+CT_step['time'] = time_arr
+
 
 # Explore all the frequencies defined in omega
 for i,val in enumerate(omega):
@@ -96,7 +111,7 @@ for i,val in enumerate(omega):
         
         #Run BEMT for each DI model
         for k,model in enumerate(DI_models):
-            print('Running case',i*(len(CT_sin['CT_0']))+j*(len(DI_models))+k+1,'out of',len(CT_sin['CT_0'])*len(omega)*len(DI_models))
+            print('Running case',i*(len(CT_sin['CT_0'])*len(DI_models))+j*(len(DI_models))+k+1,'out of',len(CT_sin['CT_0'])*len(omega)*len(DI_models))
             Calc.Solver(time = time_arr, conditions = cond, DI_Model = model)
             
             #Store the results
@@ -104,9 +119,10 @@ for i,val in enumerate(omega):
             
         
 
-
-
-
+if saving:
+    file = open("CT_sin.pkl","wb")
+    pickle.dump(CT_sin,file)
+    file.close()    
 
 
 
