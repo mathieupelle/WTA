@@ -1,11 +1,10 @@
-
-
 # -*- coding: utf-8 -*-
 """
-Created on Sat Jun  5 11:19:26 2021
+Created on Tue Jun 15 14:33:45 2021
 
-@author: MathieuPelle
+@author: Kimberly
 """
+
 
 import numpy as np
 import pandas as pd
@@ -18,14 +17,12 @@ class rotor:
   def __init__(self, N_radial_sections = 50, Spacing_method = 'lin', pitch = -2):
     """
       Class that defines the geometry of a rotor.
-
       Parameters
       ----------
       Optimized_geometry : Optimal geometry determined using the class Optimizer.
           If input provided (none by default), the rotor will be created with that geometry
       N_radial_sections : Number of radial elements to be used
       Spacing method : 'Lin' -> linear spacing. 'cos' -> cosinusoidal spacing
-
    """
 
           #Geometric data of the blade
@@ -55,7 +52,6 @@ class rotor:
   def SetOperationalData(self, wind_speed, TSR, rho=1.225):
     """
       Operational data associated to the rotor
-
       Parameters
       ----------
       wind_speed : Float [m/s]
@@ -162,6 +158,14 @@ def Pitt_Peters(CT, a, r, dt, Rotor):
     a_new = -v/Rotor.wind_speed
     return a_new
 
+def Larsen_Madsen(a, CT, Rotor, r, dt):
+    vz = -a*Rotor.wind_speed #calculate induced velocity from a(i)
+    tau = 0.5*r/(Rotor.wind_speed + vz)
+    a_qs = NewInductionFactor(CT) #calculate a_qs from CT(i+1)
+    a_new = a*np.exp(-dt/tau) + a_qs*(1-np.exp(-dt/tau))
+    return a_new
+       
+
 def plot_TSR(results, param_lst, times, save=False):
     var=['alpha','phi','a','ap','f_tan','f_nor','circulation','local_CQ','local_CT']
     labels=[r'$\alpha$ [deg]','$\phi$ [deg]', 'a [-]','$a^,[-]$', '$C_t$ [-]', '$C_n$ [-]','$\Gamma$ [-]','$C_q [-]$', '$C_T [-]$']
@@ -201,7 +205,7 @@ wind_vector = wind_speed*np.ones(len(time))
 
 pitch_lst = -2*np.ones(len(time))
 #pitch_lst[1:] = 0
-
+print('pitch(t) =',pitch_lst)
 
 Results = results(len(time), N_radial)
 for t in range(len(time)):
@@ -234,7 +238,8 @@ for t in range(len(time)):
             if t==0:
                 a_new = NewInductionFactor(CT)
             else:
-                a_new = Pitt_Peters(CT, Results.a[t-1, i]*Results.f[t-1, i], r, dt, Rotor)
+                #a_new = Pitt_Peters(CT, Results.a[t-1, i]*Results.f[t-1, i], r, dt, Rotor)
+                a_new = Larsen_Madsen(Results.a[t-1, i]*Results.f[t-1, i], CT, Rotor, r, dt)
 
             f,f_tip,f_root = PrandtlTipCorrection(Rotor, mu, a_new)
 
@@ -285,6 +290,3 @@ plt.xlabel('Time [s]')
 
 
 #%%
-
-
-

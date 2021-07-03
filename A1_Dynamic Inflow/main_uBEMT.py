@@ -7,6 +7,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from utilities_uBEMT import Rotor,BEMT,PlotContours
+
 import pickle
 
 #%% General inputs
@@ -14,6 +15,7 @@ import pickle
 saving = True
   
 Geometry = Rotor(N_radial_sections = 15) #Define the rotor geometry
+
  
 #Define the models that we want to analyse
 DI_models = ['Steady','PP','LM','O']
@@ -23,6 +25,7 @@ Calc.CpLambda(TSR_list = list(np.linspace(5,15,50)), theta_list = list(np.linspa
 
 #Plot contours
 PlotContours(Calc.Cp_lambda)
+
 
 #%% Case A: Dynamic inflow due to change in rotor configuration  
 # A.1 Step change in thrust coefficient
@@ -46,7 +49,8 @@ for i,val in enumerate(CT_step['cases']):
     CT_step['pitch'].append(pitch_angle)
     
     #Build conditions dictionary necessary for the calculation of the unsteady BEMT
-    time_arr = np.linspace(0,1,20)
+
+    time_arr = np.arange(0,30.05,0.05)
     CT_step['time'] = time_arr
     cond = {'wind_speed': 10*np.ones(len(time_arr)),
         'pitch_angle': np.concatenate((np.array(pitch_angle),pitch_angle[1]*np.ones(len(time_arr)-2)),axis=None),
@@ -58,6 +62,7 @@ for i,val in enumerate(CT_step['cases']):
     #Run BEMT for each model
     for j,model in enumerate(DI_models):
         print('Running case',i*len(DI_models)+j+1,'out of',len(CT_step['cases'])*len(DI_models))
+
         Calc.Solver(time = time_arr, conditions = cond, DI_Model = model)
     
         #Store the results in the summary dictionary
