@@ -43,6 +43,7 @@ def plotting(plot_input,name, save=False):
             data = pickle.load(file)
             magnitude_index = int(cases[c][4])-1
             mode = 'step'
+            shift = 300
             print('Step')
 
 
@@ -57,6 +58,8 @@ def plotting(plot_input,name, save=False):
         else:
             raise Exception('Incorrect case selected')
         time_arr = data['time']*10/50
+        if mode == 'step':
+            time_arr = time_arr[:shift]
         for m in range(len(models)):
             model = models[m]
             model_index = np.where(np.asarray(model_lst) == model)[0][0]
@@ -94,6 +97,8 @@ def plotting(plot_input,name, save=False):
                     leg = models_legend[model_index]
                 else:
                     pass
+                if mode == 'step':
+                    Z = Z[:shift]
 
                 plt.plot(time_arr, Z, label=leg)
                 plt.xlabel('$U_{\infty}t/R$ [-]')
@@ -105,18 +110,28 @@ def plotting(plot_input,name, save=False):
                 print('3D plot')
                 Z = getattr(result, variable[0])
                 Z = Z[:,0,:]
+                if variable[0]=='f_tan' or variable[0]=='f_nor':
+                    Z=Z/(0.5*1.225*10**2*50)
 
                 _, ax = plt.subplots(subplot_kw={"projection": "3d"})
                 mu = result.mu[:,0,0]
+                if mode == 'step':
+                    mu = mu[:shift]
                 r, t = np.meshgrid(time_arr, mu)
+                if mode == 'step':
+                    Z = Z[:,:shift]
+                #print(np.shape(r), np.shape(t), np.shape(Z))
                 ax.plot_surface(r, t, Z, cmap='viridis')
                 ax.set_ylim(ax.get_ylim()[::-1])
 
                 ax.set_ylabel('$\mu$ [-]')
                 ax.set_xlabel('$U_{\infty}t/R$ [-]')
                 lab = labels[np.where(np.asarray(var) == variable[0])[0][0]]
-                ax.set_zlabel(lab)
+
+                #ax.set_xlim(0,3)
                 ax.view_init(elev=20., azim=-130)
+                ax.zaxis.set_rotate_label(False)
+                ax.set_zlabel(lab, rotation=0, labelpad=9)
 
             elif dimension[0]=='r_pos':
                 print('2D radial position plot')
@@ -125,10 +140,12 @@ def plotting(plot_input,name, save=False):
                     Z = getattr(result, 'a')
                     mu = getattr(result, 'mu')
                     idx = np.argmin(abs(mu[:,0,0]-dimension[1]))
-                    print(dimension[1], idx, mu[idx,0,0])
                     Z = Z[idx,0,:]
                 else:
                     raise Exception('Not able to plot this variable in 2D radial position plot (yet?)')
+
+                if mode == 'step':
+                    Z = Z[:shift]
 
                 plt.plot(time_arr, Z, label=models_legend[model_index])
                 plt.xlabel('$U_{\infty}t/R$ [-]')
@@ -142,8 +159,9 @@ def plotting(plot_input,name, save=False):
     plt.grid()
     if dimension[0]!='3D':
         plt.legend()
+
     if dimension[0]=='2D':
-        plt.xlim([0,max(time_arr)])
+        plt.xlim([0,3])
     if dimension[0]=='r_pos':
         plt.ylim([0,0.5])
         plt.xlim([0,max(time_arr)])
@@ -198,7 +216,7 @@ plotting(plot_input,'a_global_PP_4CTsteps',save=saving)
 v = ['alpha','phi','a','ap','f_tan','f_nor']
 for i in range(len(v)):
     plot_input = {'Cases':['A.1.1'], 'Models':['PP'], 'Dimension':['3D'], 'Variable':[v[i]]}
-    plotting(plot_input,v[i]+'PP_3D_CTstep1',save=saving)
+    plotting(plot_input,v[i]+'_PP_3D_CTstep1',save=saving)
 
 #%% Oscillation comparison
 
@@ -211,7 +229,7 @@ plotting(plot_input,'a_global_PP_3freq_amp0.5',save=saving)
 v = ['alpha','phi','a','ap','f_tan','f_nor']
 for i in range(len(v)):
     plot_input = {'Cases':['A.2.1_0.3'], 'Models':['PP'], 'Dimension':['3D'], 'Variable':[v[i]]}
-    plotting(plot_input,v[i]+'PP_3D_freq0.3_amp0.5',save=saving)
+    plotting(plot_input,v[i]+'_PP_3D_freq0.3_amp0.5',save=saving)
 
 
 #%%
