@@ -61,7 +61,7 @@ for i,val in enumerate(CT_step['cases']):
     
     #Run BEMT for each model
     for j,model in enumerate(DI_models):
-        print('Running case',i*len(DI_models)+j+1,'out of',len(CT_step['cases'])*len(DI_models))
+        print('Running case', i*len(DI_models)+j+1,'of', len(CT_step['cases'])*len(DI_models))
 
         Calc.Solver(time = time_arr, conditions = cond, DI_Model = model)
     
