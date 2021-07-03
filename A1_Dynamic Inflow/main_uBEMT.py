@@ -9,14 +9,21 @@ import matplotlib.pyplot as plt
 from utilities_uBEMT import Rotor,BEMT
 import pickle
 
-#%% Save results?
-saving = True
-   
+#%% General inputs
+#Save results?
+saving = False
+  
+Geometry = Rotor(N_radial_sections = 30) #Define the rotor geometry
+ 
+#Define the models that we want to analyse
+DI_models = ['Steady','PP','LM','O']
+
+Calc = BEMT(Geometry) #Initialize the BEMT class to compute the calculations
+Calc.CpLambda(TSR_list = [10], theta_list = list(np.linspace(-7,5))) #Calculate the Cp/Ct-theta-tsr contours
+
 
 #%% Case A: Dynamic inflow due to change in rotor configuration  
 # A.1 Step change in thrust coefficient
-
-Geometry = Rotor(N_radial_sections = 30) #Define the rotor geometry
 
 #Define which steps do we want to analyse. This will be the summary variable for all the case
 CT_step = {'cases':[[0.5,0.9],
@@ -25,21 +32,10 @@ CT_step = {'cases':[[0.5,0.9],
            [1.1,0.4]],
            'pitch':[]}
 
-#CT_step = {'cases':[[0.5,0.9]],
-#           'pitch':[]}
-
-#Define the models that we want to analyse
-DI_models = ['Steady','PP','LM','O']
-
 #Initialise the results variable
 CT_step['results'] = [[],[],[],[]]
 
-
-
-Calc = BEMT(Geometry) #Firstly initialize the BEMT class to compute the calculations
-Calc.CpLambda(TSR_list = [10], theta_list = list(np.linspace(-7,5))) #Calculate the Cp/Ct-theta-tsr contours
-
-#%% Loop through each of these cases
+# Loop through each of these cases
 for i,val in enumerate(CT_step['cases']):
     #Get the pitch angle for each value of the step
     pitch_angle = [Calc.getPitchAngle_fromCT(CT = val[0], TSR = 10), Calc.getPitchAngle_fromCT(CT = val[1], TSR = 10)]
@@ -52,7 +48,8 @@ for i,val in enumerate(CT_step['cases']):
     CT_step['time'] = time_arr
     cond = {'wind_speed': 10*np.ones(len(time_arr)),
         'pitch_angle': np.concatenate((np.array(pitch_angle),pitch_angle[1]*np.ones(len(time_arr)-2)),axis=None),
-        'yaw_angle': np.zeros(len(time_arr))}
+        'yaw_angle': np.zeros(len(time_arr)),
+        'TSR': 10*np.ones(len(time_arr))}
     
     #cond['pitch_angle'] = 0*np.ones(len(time_arr))
     
@@ -62,7 +59,6 @@ for i,val in enumerate(CT_step['cases']):
         Calc.Solver(time = time_arr, conditions = cond, DI_Model = model)
     
         #Store the results in the summary dictionary
-        print(j,i)
         CT_step['results'][j].append(Calc.Results)
     
 #Save the results
@@ -86,10 +82,10 @@ CT_sin = {'CT_0': [.5,.9,.2],
           'omega': omega}
 
 #Create the empty results list
-CT_sin['results'] = [[[[],[],[]] for _ in range(len(omega))] for __ in range(len(DI_models))]
+CT_sin['results'] = [[[[],[],[]] for guillem in range(len(omega))] for mathieu in range(len(DI_models))]
 
 #Store time array
-CT_step['time'] = time_arr
+CT_sin['time'] = time_arr
 
 
 # Explore all the frequencies defined in omega
@@ -107,7 +103,8 @@ for i,val in enumerate(omega):
         #Build the conditions dict necessary for the unsteady BEMT
         cond = {'wind_speed': 10*np.ones(len(time_arr)),
                 'pitch_angle': pitch_arr,
-                'yaw_angle': np.zeros(len(time_arr))}
+                'yaw_angle': np.zeros(len(time_arr)),
+                'TSR': 10*np.ones(len(time_arr))}
         
         #Run BEMT for each DI model
         for k,model in enumerate(DI_models):
@@ -116,8 +113,7 @@ for i,val in enumerate(omega):
             
             #Store the results
             CT_sin['results'][k][i][j] = Calc.Results
-            
-        
+                  
 
 if saving:
     file = open("CT_sin.pkl","wb")
@@ -125,4 +121,115 @@ if saving:
     file.close()    
 
 
+#%% B.1 Dynamic inflow due to change in wind speed - Step change in Uinf (keep the same rotational speed)
 
+## INPUTS
+#Baseline velocity and tip speed ratio for the calculations
+U_0 = 10 
+TSR_0 = 10
+
+#Velocity steps
+U_step = {'cases':[[1,1.5],
+           [1,0.7],
+           [1,1.2],
+           [1,0.9]]}
+
+#Calculate baseline rotor speed
+Omega_0 = TSR_0*U_0/Geometry.radius
+
+#Calculate the pitch angle corresponding to the optimal CT=8/9
+pitch =  Calc.getPitchAngle_fromCT(CT = 8/9,TSR = TSR_0)
+
+#Create time array
+time_arr = np.linspace(0,1,20)
+U_step['time'] = time_arr
+
+#Create results array
+U_step['results'] = [[[],[],[],[]] for nils in range(len(DI_models))]
+
+
+## Iterate for each case
+for i,step in enumerate(U_step['cases']):
+    #Firstly, calculate the new TSR value
+    TSR_step = Omega_0*Geometry.radius/(U_0*step[1])
+    
+    #Build conditions dictionary
+    cond = {'wind_speed': np.concatenate((np.array(U_0),U_0*step[1]*np.ones(len(time_arr)-1)),axis=None),
+        'pitch_angle': pitch*np.ones(len(time_arr)),
+        'yaw_angle': np.zeros(len(time_arr)),
+        'TSR': np.concatenate((np.array(TSR_0),TSR_step*np.ones(len(time_arr)-1)),axis=None)}   
+    
+    #Run BEMT for each model
+    for j,model in enumerate(DI_models):
+        print('U-step: running case',i*len(DI_models)+j+1,'out of',len(U_step['cases'])*len(DI_models))
+        Calc.Solver(time = time_arr, conditions = cond, DI_Model = model) 
+        
+        #Store the results
+        U_step['results'][j][i] = Calc.Results        
+ 
+if saving:
+    file = open("U_step.pkl","wb")
+    pickle.dump(U_step,file)
+    file.close()
+
+#%% B.2 Dynamic inflow due to change in wind speed - Sinusoidal space
+
+## INPUTS
+#Baseline velocity and tip speed ratio for the calculations
+U_0 = 10 
+TSR_0 = 10
+
+#Velocity steps
+U_sin = {'U_1':[1,0.7,1.2],
+         'Delta_U':[.5,.3,.5],
+         'omega':np.arange(0.05,0.301,0.05)}
+
+#Create time array
+time_arr = np.arange(0,10,0.1)
+U_sin['time'] = time_arr
+
+#Create empty arrays for U and TSR
+U_sin['U_arr'] = np.zeros((len(U_sin['U_1']),len(time_arr)))
+U_sin['TSR_arr'] = np.zeros((len(U_sin['U_1']),len(time_arr)))
+
+#Calculate baseline rotor speed
+Omega_0 = TSR_0*U_0/Geometry.radius
+
+#Calculate the pitch angle corresponding to the optimal CT=8/9
+pitch =  Calc.getPitchAngle_fromCT(CT = 8/9,TSR = TSR_0)
+
+#Create results array
+U_sin['results'] = [[[[],[],[]] for guillem in range(len(omega))] for mathieu in range(len(DI_models))]
+
+## Iterate for each case
+for i,freq in enumerate(omega):
+    for j in range(len(U_sin['U_1'])):
+        #Start by defining the velocity sinusoidal wave
+        U_arr = (U_sin['U_1'][j] + U_sin['Delta_U'][j]*np.sin(freq*time_arr))*U_0
+        #Convert it to tip speed ratio 
+        TSR_arr = Omega_0*Geometry.radius/U_arr
+        #Store it in the summary dictionary
+        U_sin['U_arr'][j,:] = U_arr
+        U_sin['TSR_arr'][j,:] = TSR_arr
+        
+        #Build the conditions dict necessary for the unsteady BEMT
+        cond = {'wind_speed': U_arr,
+                'pitch_angle': pitch*np.ones(len(time_arr)),
+                'yaw_angle': np.zeros(len(time_arr)),
+                'TSR': TSR_arr}
+        
+        #Run BEMT for each DI model
+        for k,model in enumerate(DI_models):
+            print('Running case',i*(len(U_sin['U_1'])*len(DI_models))+j*(len(DI_models))+k+1,'out of',len(U_sin['U_1'])*len(omega)*len(DI_models))
+            Calc.Solver(time = time_arr, conditions = cond, DI_Model = model)
+            
+            #Store the results
+            U_sin['results'][k][i][j] = Calc.Results
+            
+if saving:
+    file = open("U_sin.pkl","wb")
+    pickle.dump(U_sin,file)
+    file.close()     
+        
+    
+    

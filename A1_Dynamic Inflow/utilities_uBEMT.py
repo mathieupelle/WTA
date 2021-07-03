@@ -225,7 +225,7 @@ class BEMT:
             # Set the operational conditions of this time step
             # If steady calculation, takes the values contained in "Rotor"
             if len(time) > 1:
-                self.Rotor.SetOperationalData(wind_speed = conditions['wind_speed'][t_idx], TSR = self.Rotor.TSR, yaw = conditions['yaw_angle'][t_idx])
+                self.Rotor.SetOperationalData(wind_speed = conditions['wind_speed'][t_idx], TSR = conditions['TSR'][t_idx], yaw = conditions['yaw_angle'][t_idx])
                 self.Rotor.theta = conditions['pitch_angle'][t_idx]
 
                 dt = time[1] - time[0] #Get dt
@@ -540,6 +540,54 @@ class BEMT:
 
         #Interpolate the pitch value fiven the desired CT and return it
         return np.interp(CT,CT_arr,theta_arr)
+    
+    def getTSR_fromCT(self,CT,theta):
+        """
+        Interpolate the tip speed ratio based on a desired thrust coefficient. It uses the CP-Theta-TSR contours generated before.
+
+        Parameters
+        ----------
+        CT : Float
+            Desired CT which pitch we want to know.
+        theta : Float
+            Pitch angle of the evaluation point.
+
+        Raises
+        ------
+        Exception
+            It needs to have the atribute Cp_lambda generated beforehand.
+
+        Returns
+        -------
+        TSR: Float 
+            Interpolated tip speed ratio corresponding to the required CT.
+
+        """
+        #Firstly, check if the Cp-pitch-lambda contours exist
+        if hasattr(self, 'Cp_lambda'):
+            pass
+        else:
+            raise Exception("No Cp_lambda variable found. Please run BEMT.CpLambda(TSR_list,theta_list) to generate it so I can interpolate. Thanks")
+
+        #Unpack the necessary variables for readibility
+        CT_mat = self.Cp_lambda['CT']
+        theta_lst = self.Cp_lambda['theta']
+        TSR_lst = self.Cp_lambda['TSR']
+
+        #Interpolate firstly across pitch angle
+        CT_lst = [] #Initialise array of CT vs TSR
+        for i in range(len(TSR_lst)):
+            CT_lst.append(np.interp(theta,theta_lst,CT_mat[:,i]))
+
+        #Sort CT and TSR arrays for the second interpolation
+        CT_arr = np.array(CT_lst)
+        TSR_arr = np.array(TSR_lst)
+        idxs = CT_arr.argsort() #Get indices of sorted array
+        CT_arr = CT_arr[idxs]
+        TSR_arr = TSR_arr[idxs]
+
+        #Interpolate the pitch value fiven the desired CT and return it
+        return np.interp(CT,CT_arr,TSR_arr)
 
 
 class Optimizer:
