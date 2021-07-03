@@ -875,3 +875,27 @@ def plot_mesh_sensitivity(N_array,CT_lin,CT_cos,N_chosen_lin,N_chosen_cos,execut
     if save:
         plt.savefig('figures/MeshSensitivity/Convergence.pdf')
 
+def PlotContours(data):
+    #Plot Cp
+    fig = plt.figure('CP-lambda-theta')
+    lev = np.linspace(0,0.5,200,endpoint=True)
+    CS = plt.contourf(data['TSR'],data['theta'],data['CP'].transpose(),cmap='jet',levels=lev,vmin=0,extend='both')
+    plt.colorbar()
+    plt.xlabel('Tip speed ratio [-]')
+    plt.ylabel('Pitch angle [deg]')
+    plt.title('Power coefficient CP [-]')
+    plt.show()
+    plt.savefig('figures/contours_CP.pdf')
+    
+    #Plot Cp
+    fig = plt.figure('CT-lambda-theta')
+    lev = np.linspace(0,1.5,200,endpoint=True)
+    CS = plt.contourf(data['TSR'],data['theta'],data['CT'].transpose(),cmap='jet',levels=lev,vmin=0,extend='both')
+    plt.colorbar()
+    plt.xlabel('Tip speed ratio [-]')
+    plt.ylabel('Pitch angle [deg]')
+    plt.title('Thrust coefficient CT [-]')
+    plt.show()
+    plt.savefig('figures/contours_CT.pdf')
+
+

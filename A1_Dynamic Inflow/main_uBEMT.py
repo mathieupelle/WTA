@@ -6,20 +6,25 @@
 #%% Input necessary packages 
 import numpy as np
 import matplotlib.pyplot as plt
-from utilities_uBEMT import Rotor,BEMT
+from utilities_uBEMT import Rotor,BEMT,PlotContours
+
 import pickle
 
 #%% General inputs
 #Save results?
 saving = True
   
-Geometry = Rotor(N_radial_sections = 30) #Define the rotor geometry
+Geometry = Rotor(N_radial_sections = 15) #Define the rotor geometry
+
  
 #Define the models that we want to analyse
 DI_models = ['Steady','PP','LM','O']
 
 Calc = BEMT(Geometry) #Initialize the BEMT class to compute the calculations
-Calc.CpLambda(TSR_list = [10], theta_list = list(np.linspace(-7,5))) #Calculate the Cp/Ct-theta-tsr contours
+Calc.CpLambda(TSR_list = list(np.linspace(5,15,50)), theta_list = list(np.linspace(-7,5,50))) #Calculate the Cp/Ct-theta-tsr contours
+
+#Plot contours
+PlotContours(Calc.Cp_lambda)
 
 
 #%% Case A: Dynamic inflow due to change in rotor configuration  
@@ -44,6 +49,7 @@ for i,val in enumerate(CT_step['cases']):
     CT_step['pitch'].append(pitch_angle)
     
     #Build conditions dictionary necessary for the calculation of the unsteady BEMT
+
     time_arr = np.arange(0,30.05,0.05)
     CT_step['time'] = time_arr
     cond = {'wind_speed': 10*np.ones(len(time_arr)),
@@ -56,6 +62,7 @@ for i,val in enumerate(CT_step['cases']):
     #Run BEMT for each model
     for j,model in enumerate(DI_models):
         print('Running case', i*len(DI_models)+j+1,'of', len(CT_step['cases'])*len(DI_models))
+
         Calc.Solver(time = time_arr, conditions = cond, DI_Model = model)
     
         #Store the results in the summary dictionary
@@ -231,5 +238,49 @@ if saving:
     pickle.dump(U_sin,file)
     file.close()     
         
+#%% Studying U step with the same cases as the CT step
+
+#Build the cases
+U_step_comp = {'cases':[.5,.9],
+               'pitch':[],
+               'TSR':[10,np.nan],
+               'results':[[],[],[],[]]}
+
+#Set the baseline wind speed and TSR
+U_0 = 10 
+TSR_0 = 10
+
+#Calculate baseline rotor speed
+Omega_0 = TSR_0*U_0/Geometry.radius
+
+#Create time array
+time_arr = np.arange(0,30.1,0.1)
+U_step_comp['time'] = time_arr
+
+#Calculate the pitch angle corresponding to the CT of case A.1
+U_step_comp['pitch'] = Calc.getPitchAngle_fromCT(CT = U_step_comp['cases'][0], TSR = TSR_0)
+
+#Calculate the necessary TSR to go to the next step
+U_step_comp['TSR'][1] = Calc.getTSR_fromCT(CT = U_step_comp['cases'][1],theta = U_step_comp['pitch'])
+
+#Calculate U that gives the necessary TSR
+U_1 = Omega_0*Geometry.radius/U_step_comp['TSR'][1]
+
+#Build the conditions dictionary
+cond = {'wind_speed': np.concatenate((np.array(U_0),U_1*np.ones(len(time_arr)-1)),axis=None),
+        'pitch_angle': U_step_comp['pitch']*np.ones(len(time_arr)),
+        'yaw_angle': np.zeros(len(time_arr)),
+        'TSR': np.concatenate((np.array(TSR_0),U_step_comp['TSR'][1]*np.ones(len(time_arr)-1)),axis=None)}
+
+#Run uBEMT for each 
+for i,model in enumerate(DI_models):
+        print('Running case',i+1,'out of',len(DI_models))
+        Calc.Solver(time = time_arr, conditions = cond, DI_Model = model)
     
-    
+        #Store the results in the summary dictionary
+        U_step_comp['results'][i] = Calc.Results 
+
+if saving:
+    file = open("U_step_comp.pkl","wb")
+    pickle.dump(U_step_comp,file)
+    file.close()   
