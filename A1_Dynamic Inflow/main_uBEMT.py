@@ -21,7 +21,7 @@ Geometry = Rotor(N_radial_sections = 15) #Define the rotor geometry
 DI_models = ['Steady','PP','LM','O']
 
 Calc = BEMT(Geometry) #Initialize the BEMT class to compute the calculations
-Calc.CpLambda(TSR_list = list(np.linspace(5,15,50)), theta_list = list(np.linspace(-7,5,50))) #Calculate the Cp/Ct-theta-tsr contours
+Calc.CpLambda(TSR_list = list(np.linspace(5,15,50)), theta_list = list(np.linspace(-15,10,100))) #Calculate the Cp/Ct-theta-tsr contours
 
 #Plot contours
 PlotContours(Calc.Cp_lambda)
@@ -77,8 +77,8 @@ if saving:
 #%% A.2 - Sinusoidal change in quasi-steady thrust coefficient
 
 # Define time array and reduced frequency
-time_arr = np.arange(0,0.1,0.01)
-omega = np.arange(0.05,0.301,0.05)
+time_arr = np.arange(0,130,0.2)
+omega = [0.05,0.15,0.3]
 
 # Input the sinusoisdal scenarios that will be explored
 CT_sin = {'CT_0': [.5,.9,.2],
@@ -243,12 +243,12 @@ if saving:
 #Build the cases
 U_step_comp = {'cases':[.5,.9],
                'pitch':[],
-               'TSR':[10,np.nan],
+               'TSR':[8,np.nan],
                'results':[[],[],[],[]]}
 
 #Set the baseline wind speed and TSR
 U_0 = 10 
-TSR_0 = 10
+TSR_0 = U_step_comp['TSR'][0]
 
 #Calculate baseline rotor speed
 Omega_0 = TSR_0*U_0/Geometry.radius
@@ -265,6 +265,8 @@ U_step_comp['TSR'][1] = Calc.getTSR_fromCT(CT = U_step_comp['cases'][1],theta = 
 
 #Calculate U that gives the necessary TSR
 U_1 = Omega_0*Geometry.radius/U_step_comp['TSR'][1]
+
+U_step_comp['U'] = [U_0,U_1]
 
 #Build the conditions dictionary
 cond = {'wind_speed': np.concatenate((np.array(U_0),U_1*np.ones(len(time_arr)-1)),axis=None),
