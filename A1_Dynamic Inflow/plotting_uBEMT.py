@@ -27,8 +27,11 @@ def plotting(plot_input,name, save=False):
     var = ['alpha','phi','a','ap','f_tan','f_nor', 'CT', 'a_global']
     labels = [r'$\alpha$ [deg]','$\phi$ [deg]', 'a [-]','$a^,[-]$', '$C_t$ [-]', '$C_n$ [-]', '$C_T$ [-]', 'a [-]']
     models_legend = ['Steady', 'Pitt-Peters', 'Larsen-Madsen', 'Øye']
-    CT_step_legend = {'A.1.1': 'CT 0.5-->0.9','A.1.2': 'CT 0.9-->0.5', 'A.1.3': 'CT 0.2-->1.1', 'A.1.4': 'CT 1.1-->0.4'}
-    CT_oscillation_legend = {'A.2.1': ['0.5', '0.5'], 'A.2.2': ['0.9', '0.3'], 'A.2.3': ['0.2', '0.7']}
+    step_legend = {'A.1.1': 'CT 0.5-->0.9','A.1.2': 'CT 0.9-->0.5', 'A.1.3': 'CT 0.2-->1.1', 'A.1.4': 'CT 1.1-->0.4',
+                      'B.1.1': '$U_{\infty}/U_0$ 1-->1.5', 'B.1.2': '$U_{\infty}/U_0$ 1-->0.8',
+                      'B.1.3': '$U_{\infty}/U_0$ 1-->1.2', 'B.1.4': '$U_{\infty}/U_0$ 1-->0.9'}
+    oscillation_legend = {'A.2.1': ['0.5', '0.5'], 'A.2.2': ['0.9', '0.3'], 'A.2.3': ['0.2', '0.7'],
+                          'B.2.1': ['1', '0.5'], 'B.2.2': ['0.8', '0.3'], 'B.2.3': ['1.2', '0.5']}
 
     if dimension[0]!='3D':
         plt.figure()
@@ -44,7 +47,7 @@ def plotting(plot_input,name, save=False):
             magnitude_index = int(cases[c][4])-1
             mode = 'step'
             shift = 300
-            print('Step')
+            print('CT Step')
 
 
         elif case_index == 'A.2':
@@ -53,7 +56,28 @@ def plotting(plot_input,name, save=False):
             freq_index = np.where(omega_lst == float(cases[c][6:]))[0][0]
             magnitude_index = int(cases[c][4])-1
             mode = 'oscillations'
-            print('Oscillations')
+            print('CT Oscillations')
+
+        elif case_index == 'B.1':
+            file = open("U_step.pkl", "rb")
+            data = pickle.load(file)
+            magnitude_index = int(cases[c][4])-1
+            #scaling = 1.1487626841233327**2
+            scaling =  1
+            mode = 'step'
+            shift = len(data['time'])
+            print('U step')
+
+
+        elif case_index == 'B.2':
+            file = open("U_sin.pkl", "rb")
+            data = pickle.load(file)
+            freq_index = np.where(omega_lst == float(cases[c][6:]))[0][0]
+            magnitude_index = int(cases[c][4])-1
+            scaling =  1
+            mode = 'oscillations'
+            print('U oscillations')
+
 
         else:
             raise Exception('Incorrect case selected')
@@ -64,11 +88,12 @@ def plotting(plot_input,name, save=False):
             model = models[m]
             model_index = np.where(np.asarray(model_lst) == model)[0][0]
 
-            if case_index == 'A.1':
+            if case_index == 'A.1' or case_index=='B.1':
                 result = data['results'][model_index][magnitude_index]
 
-            elif case_index == 'A.2':
+            elif case_index == 'A.2' or case_index=='B.2':
                 result = data['results'][model_index][freq_index][magnitude_index]
+
 
             else:
                 raise Exception('Third entry of case name probably wrong')
@@ -81,15 +106,20 @@ def plotting(plot_input,name, save=False):
                     Z = np.mean(Z,axis=0)[0,:]
                 elif variable[0]=='CT':
                     Z = getattr(result, variable[0])
+                    if case_index == 'B.1':
+                        Z[1:] = Z[1:]*scaling
                 else:
                     raise Exception('Not able to plot this variable in 2D time plot (yet?)')
 
                 if len(cases)>1:
                     if mode=='step':
-                        leg = CT_step_legend[cases[c]]
+                        leg = step_legend[cases[c]]
                     elif mode=='oscillations':
-                        lst = CT_oscillation_legend[cases[c][0:5]]
-                        leg = 'CT='+str(lst[0])+'+'+str(lst[1])+'sin('+str(omega_lst[freq_index])+'t)'
+                        lst = oscillation_legend[cases[c][0:5]]
+                        if case_index=='A.2':
+                            leg = 'CT='+str(lst[0])+'+'+str(lst[1])+'sin('+str(omega_lst[freq_index])+'t)'
+                        else:
+                            leg = '$U_{\infty}$='+str(lst[0])+'+'+str(lst[1])+'sin('+str(omega_lst[freq_index])+'t)'
                     else:
                         pass
 
@@ -161,7 +191,7 @@ def plotting(plot_input,name, save=False):
         plt.legend()
 
     if dimension[0]=='2D':
-        plt.xlim([0,3])
+        plt.xlim([0,max(time_arr)])
     if dimension[0]=='r_pos':
         plt.ylim([0,0.5])
         plt.xlim([0,max(time_arr)])
@@ -169,9 +199,10 @@ def plotting(plot_input,name, save=False):
         plt.savefig('figures/'+str(name)+'.pdf')
 
 
-#%% Plotting cases
+#%% Plotting cases definition
 
-#Variables --> 'alpha','phi','a','ap','f_tan','f_nor', 'CT', 'a_global'
+#Variables that can be plotted in 3D Z vs t vs r -->'alpha','phi','a','ap','f_tan','f_nor',
+#Variables that can be plotted in 2D Z vs t -->'CT', 'a_global'
 
 #Steps in CT
 # A.1.1 0.5 --> 0.9
@@ -185,7 +216,19 @@ def plotting(plot_input,name, save=False):
 # A.2.2 --> CT0=0.9 dCT=0.3
 # A.2.3 --> CT0=0.2 dCT=0.7
 
-saving=True
+#Steps in CT
+# B.1.1 1 --> 1.5
+# B.1.2 1 --> 0.8
+# B.1.3 1 --> 1.2
+# B.1.4 1 --> 0.9
+
+#Oscillations in CT
+# B.x.x_omega --> omega = desired frequency
+# B.2.1 --> U1/U0=1 dU=0.5
+# B.2.2 --> U1/U0=0.8 dU=0.3
+# B.2.3 --> U1/U0=1.2 dU=0.5
+
+saving=False
 
 #%% Model comparison
 
@@ -232,7 +275,20 @@ for i in range(len(v)):
     plotting(plot_input,v[i]+'_PP_3D_freq0.3_amp0.5',save=saving)
 
 
-#%%
+#%% U_inf comparison
 
+plot_input = {'Cases':['B.1.1'], 'Models':['Steady','PP','LM','O'], 'Dimension':['2D'], 'Variable':['CT']}
+plotting(plot_input,'U_3models_Ustep1',save=saving)
 
+plot_input = {'Cases':['B.1.1'], 'Models':['Steady','PP','LM','O'], 'Dimension':['2D'], 'Variable':['a_global']}
+plotting(plot_input,'U_3models_Ustep1',save=saving)
+
+plot_input = {'Cases':['B.1.1','B.1.2', 'B.1.4', 'B.1.4'], 'Models':['PP'], 'Dimension':['2D'], 'Variable':['CT']}
+plotting(plot_input,'U_PP_4CTsteps',save=saving)
+
+plot_input = {'Cases':['B.2.1_0.05', 'B.2.1_0.15', 'B.2.1_0.3'], 'Models':['PP'], 'Dimension':['2D'], 'Variable':['CT']}
+plotting(plot_input,'U_PP_4CTsteps',save=saving)
+
+plot_input = {'Cases':['B.2.1_0.05', 'B.2.1_0.15', 'B.2.1_0.3'], 'Models':['PP'], 'Dimension':['2D'], 'Variable':['a_global']}
+plotting(plot_input,'U_PP_4CTsteps',save=saving)
 
