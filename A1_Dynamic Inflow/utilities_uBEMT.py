@@ -577,11 +577,18 @@ class BEMT:
         #Interpolate firstly across pitch angle
         CT_lst = [] #Initialise array of CT vs TSR
         for i in range(len(TSR_lst)):
-            CT_lst.append(np.interp(theta,theta_lst,CT_mat[:,i]))
+            CT_lst.append(np.interp(theta,theta_lst,CT_mat[i,:]))
 
         #Sort CT and TSR arrays for the second interpolation
         CT_arr = np.array(CT_lst)
         TSR_arr = np.array(TSR_lst)
+        
+        #Define array of desired CT
+        CT_cross = np.ones(len(CT_arr))*CT
+        
+        #Find crossings
+        idx = np.argwhere(np.diff(np.sign(CT_arr - CT_cross))).flatten()
+
         idxs = CT_arr.argsort() #Get indices of sorted array
         CT_arr = CT_arr[idxs]
         TSR_arr = TSR_arr[idxs]
