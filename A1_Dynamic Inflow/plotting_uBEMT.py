@@ -46,7 +46,7 @@ def plotting(plot_input,name, save=False):
             data = pickle.load(file)
             magnitude_index = int(cases[c][4])-1
             mode = 'step'
-            shift = 300
+            shift = len(data['time'])
             print('CT Step')
 
 
@@ -56,13 +56,13 @@ def plotting(plot_input,name, save=False):
             freq_index = np.where(omega_lst == float(cases[c][6:]))[0][0]
             magnitude_index = int(cases[c][4])-1
             mode = 'oscillations'
+            shift = len(data['time'])
             print('CT Oscillations')
 
         elif case_index == 'B.1':
             file = open("U_step.pkl", "rb")
             data = pickle.load(file)
             magnitude_index = int(cases[c][4])-1
-            #scaling = 1.1487626841233327**2
             scaling =  1
             mode = 'step'
             shift = len(data['time'])
@@ -76,14 +76,14 @@ def plotting(plot_input,name, save=False):
             magnitude_index = int(cases[c][4])-1
             scaling =  1
             mode = 'oscillations'
+            shift = len(data['time'])
             print('U oscillations')
 
 
         else:
             raise Exception('Incorrect case selected')
         time_arr = data['time']*10/50
-        if mode == 'step':
-            time_arr = time_arr[:shift]
+        time_arr = time_arr[:shift]
         for m in range(len(models)):
             model = models[m]
             model_index = np.where(np.asarray(model_lst) == model)[0][0]
@@ -127,8 +127,7 @@ def plotting(plot_input,name, save=False):
                     leg = models_legend[model_index]
                 else:
                     pass
-                if mode == 'step':
-                    Z = Z[:shift]
+                Z = Z[:shift]
 
                 plt.plot(time_arr, Z, label=leg)
                 plt.xlabel('$U_{\infty}t/R$ [-]')
@@ -145,11 +144,15 @@ def plotting(plot_input,name, save=False):
 
                 _, ax = plt.subplots(subplot_kw={"projection": "3d"})
                 mu = result.mu[:,0,0]
-                if mode == 'step':
-                    mu = mu[:shift]
+                mu = mu[:shift]
                 r, t = np.meshgrid(time_arr, mu)
-                if mode == 'step':
-                    Z = Z[:,:shift]
+
+                Z = Z[:,:shift]
+                Z_steady = getattr(data['results'][0][freq_index][magnitude_index], variable[0])
+                Z_steady = Z_steady[:,0,:]
+                if variable[0]=='f_tan' or variable[0]=='f_nor':
+                    Z_steady=Z_steady/(0.5*1.225*10**2*50)
+                Z = Z/Z_steady[:,:shift]
                 #print(np.shape(r), np.shape(t), np.shape(Z))
                 ax.plot_surface(r, t, Z, cmap='viridis')
                 ax.set_ylim(ax.get_ylim()[::-1])
@@ -158,7 +161,6 @@ def plotting(plot_input,name, save=False):
                 ax.set_xlabel('$U_{\infty}t/R$ [-]')
                 lab = labels[np.where(np.asarray(var) == variable[0])[0][0]]
 
-                #ax.set_xlim(0,3)
                 ax.view_init(elev=20., azim=-130)
                 ax.zaxis.set_rotate_label(False)
                 ax.set_zlabel(lab, rotation=0, labelpad=9)
@@ -228,7 +230,7 @@ def plotting(plot_input,name, save=False):
 # B.2.2 --> U1/U0=0.8 dU=0.3
 # B.2.3 --> U1/U0=1.2 dU=0.5
 
-saving=False
+saving=True
 
 #%% Model comparison
 
@@ -263,11 +265,17 @@ for i in range(len(v)):
 
 #%% Oscillation comparison
 
-plot_input = {'Cases':['A.2.2_0.05', 'A.2.2_0.15', 'A.2.2_0.3'], 'Models':['PP'], 'Dimension':['2D'], 'Variable':['CT']}
-plotting(plot_input,'CT_PP_3freq_amp1',save=saving)
+plot_input = {'Cases':['A.2.1_0.05', 'A.2.1_0.15', 'A.2.1_0.3'], 'Models':['PP'], 'Dimension':['2D'], 'Variable':['CT']}
+plotting(plot_input,'CT_PP_3freq_amp0.5',save=saving)
 
-plot_input = {'Cases':['A.2.2_0.05', 'A.2.2_0.15', 'A.2.2_0.3'], 'Models':['PP'], 'Dimension':['2D'], 'Variable':['a_global']}
+plot_input = {'Cases':['A.2.1_0.05', 'A.2.1_0.15', 'A.2.1_0.3'], 'Models':['PP'], 'Dimension':['2D'], 'Variable':['a_global']}
 plotting(plot_input,'a_global_PP_3freq_amp0.5',save=saving)
+
+plot_input = {'Cases':['A.2.1_0.3'], 'Models':['Steady','PP','LM','O'], 'Dimension':['2D'], 'Variable':['CT']}
+plotting(plot_input,'CT_4models_freq0.3_amp0.5',save=saving)
+
+plot_input = {'Cases':['A.2.1_0.3'], 'Models':['Steady','PP','LM','O'], 'Dimension':['2D'], 'Variable':['a_global']}
+plotting(plot_input,'a_global_4models_freq0.3_amp0.5',save=saving)
 
 v = ['alpha','phi','a','ap','f_tan','f_nor']
 for i in range(len(v)):
@@ -275,20 +283,35 @@ for i in range(len(v)):
     plotting(plot_input,v[i]+'_PP_3D_freq0.3_amp0.5',save=saving)
 
 
+v = ['alpha','phi','a','ap','f_tan','f_nor']
+for i in range(len(v)):
+    plot_input = {'Cases':['A.2.1_0.3'], 'Models':['PP'], 'Dimension':['3D'], 'Variable':[v[i]]}
+    plotting(plot_input,v[i]+'_PPnorm_3D_freq0.3_amp0.5',save=saving)
+
+
 #%% U_inf comparison
 
 plot_input = {'Cases':['B.1.1'], 'Models':['Steady','PP','LM','O'], 'Dimension':['2D'], 'Variable':['CT']}
-plotting(plot_input,'U_3models_Ustep1',save=saving)
+plotting(plot_input,'CT_4models_Ustep1',save=saving)
 
-plot_input = {'Cases':['B.1.1'], 'Models':['Steady','PP','LM','O'], 'Dimension':['2D'], 'Variable':['a_global']}
-plotting(plot_input,'U_3models_Ustep1',save=saving)
+plot_input = {'Cases':['B.1.1'], 'Models':['Steady','PP','LM','O'], 'Dimension':['2D'], 'Variable':['CT']}
+plotting(plot_input,'a_global_4models_Ustep1',save=saving)
 
-plot_input = {'Cases':['B.1.1','B.1.2', 'B.1.4', 'B.1.4'], 'Models':['PP'], 'Dimension':['2D'], 'Variable':['CT']}
-plotting(plot_input,'U_PP_4CTsteps',save=saving)
+plot_input = {'Cases':['B.1.1','B.1.2', 'B.1.3', 'B.1.4'], 'Models':['PP'], 'Dimension':['2D'], 'Variable':['CT']}
+plotting(plot_input,'CT_PP_4Usteps',save=saving)
+
+plot_input = {'Cases':['B.1.1','B.1.2', 'B.1.3', 'B.1.4'], 'Models':['PP'], 'Dimension':['2D'], 'Variable':['a_global']}
+plotting(plot_input,'a_global_PP_4Usteps',save=saving)
 
 plot_input = {'Cases':['B.2.1_0.05', 'B.2.1_0.15', 'B.2.1_0.3'], 'Models':['PP'], 'Dimension':['2D'], 'Variable':['CT']}
-plotting(plot_input,'U_PP_4CTsteps',save=saving)
+plotting(plot_input,'CT_PP_3freqs_amp0.5',save=saving)
 
 plot_input = {'Cases':['B.2.1_0.05', 'B.2.1_0.15', 'B.2.1_0.3'], 'Models':['PP'], 'Dimension':['2D'], 'Variable':['a_global']}
-plotting(plot_input,'U_PP_4CTsteps',save=saving)
+plotting(plot_input,'a_global_PP_3freqs_amp0.5',save=saving)
+
+plot_input = {'Cases':['B.2.3_0.3'], 'Models':['Steady','PP','LM','O'], 'Dimension':['2D'], 'Variable':['CT']}
+plotting(plot_input,'CT_4models_freq0.3_amp0.5_mean1.2',save=saving)
+
+plot_input = {'Cases':['B.2.3_0.3'], 'Models':['Steady','PP','LM','O'], 'Dimension':['2D'], 'Variable':['a_global']}
+plotting(plot_input,'a_global_4models_freq0.3_amp0.5_mean1.2',save=saving)
 
