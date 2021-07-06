@@ -13,10 +13,11 @@ x = 6
 plt.rc('figure', figsize=[46.82 * .5**(.5 * x), 33.11 * .5**(.5 * x)])
 plt.rc('font', family='serif')
 
+
 def plotting(plot_input,name, save=False):
 
     dic = plot_input
-
+    steadynorm = False
     cases = dic['Cases']
     models =  dic['Models']
     dimension = dic['Dimension']
@@ -148,11 +149,12 @@ def plotting(plot_input,name, save=False):
                 r, t = np.meshgrid(time_arr, mu)
 
                 Z = Z[:,:shift]
-                Z_steady = getattr(data['results'][0][freq_index][magnitude_index], variable[0])
+                Z_steady = getattr(data['results'][0][magnitude_index], variable[0])
                 Z_steady = Z_steady[:,0,:]
                 if variable[0]=='f_tan' or variable[0]=='f_nor':
                     Z_steady=Z_steady/(0.5*1.225*10**2*50)
-                Z = Z/Z_steady[:,:shift]
+                if steadynorm == True:
+                    Z = Z/Z_steady[:,:shift]
                 #print(np.shape(r), np.shape(t), np.shape(Z))
                 ax.plot_surface(r, t, Z, cmap='viridis')
                 ax.set_ylim(ax.get_ylim()[::-1])
@@ -168,18 +170,18 @@ def plotting(plot_input,name, save=False):
             elif dimension[0]=='r_pos':
                 print('2D radial position plot')
 
-                if variable[0]=='a':
-                    Z = getattr(result, 'a')
-                    mu = getattr(result, 'mu')
-                    idx = np.argmin(abs(mu[:,0,0]-dimension[1]))
+                mu = getattr(result, 'mu')
+                for d in range(len(dimension[1:])):
+                    idx = np.argmin(abs(mu[:,0,0]-dimension[d+1]))
+                    Z = getattr(result, variable[0])
+
                     Z = Z[idx,0,:]
-                else:
-                    raise Exception('Not able to plot this variable in 2D radial position plot (yet?)')
+                    if variable[0]=='f_tan' or variable[0]=='f_nor':
+                        Z=Z/(0.5*1.225*10**2*50)
+                    if mode == 'step':
+                        Z = Z[:shift]
 
-                if mode == 'step':
-                    Z = Z[:shift]
-
-                plt.plot(time_arr, Z, label=models_legend[model_index])
+                    plt.plot(time_arr, Z, label='$\mu=$'+str(dimension[d+1]))
                 plt.xlabel('$U_{\infty}t/R$ [-]')
                 lab = labels[np.where(np.asarray(var) == variable[0])[0][0]]
                 plt.ylabel(lab)
@@ -193,9 +195,9 @@ def plotting(plot_input,name, save=False):
         plt.legend()
 
     if dimension[0]=='2D':
+        plt.xlim([0,9])
         plt.xlim([0,max(time_arr)])
     if dimension[0]=='r_pos':
-        plt.ylim([0,0.5])
         plt.xlim([0,max(time_arr)])
     if save:
         plt.savefig('figures/'+str(name)+'.pdf')
@@ -203,7 +205,7 @@ def plotting(plot_input,name, save=False):
 
 #%% Plotting cases definition
 
-#Variables that can be plotted in 3D Z vs t vs r -->'alpha','phi','a','ap','f_tan','f_nor',
+#Variables that can be plotted in 3D Z vs t vs r or in 2D at specific mu-->'alpha','phi','a','ap','f_tan','f_nor',
 #Variables that can be plotted in 2D Z vs t -->'CT', 'a_global'
 
 #Steps in CT
@@ -230,17 +232,43 @@ def plotting(plot_input,name, save=False):
 # B.2.2 --> U1/U0=0.8 dU=0.3
 # B.2.3 --> U1/U0=1.2 dU=0.5
 
-saving=True
+#Saving figures or not (folder: figures)
+saving=False
 
-#%% Model comparison
+#%% Raidal position and step 2D
 
+v = ['alpha','phi','a','ap','f_tan','f_nor']
+for i in range(len(v)):
+    plot_input = {'Cases':['A.1.1'], 'Models':['LM'],'Dimension':['r_pos',0.25, 0.5,0.75], 'Variable':[v[i]]}
+    plotting(plot_input,v[i]+'_radial_PP_CTstep1',save=saving)
+
+#%% Raidal position and frequency 2D
+
+v = ['alpha','phi','a','ap','f_tan','f_nor']
+for i in range(len(v)):
+    plot_input = {'Cases':['A.2.1_0.3'], 'Models':['LM'],'Dimension':['r_pos',0.25, 0.5,0.75], 'Variable':[v[i]]}
+    plotting(plot_input,v[i]+'_radial_PP_CTfreq0.3',save=saving)
+
+
+plot_input = {'Cases':['A.2.1_0.05'], 'Models':['PP'],'Dimension':['r_pos',0.25,0.5,0.75], 'Variable':['a']}
+plotting(plot_input,'a_radial_PP_CTfreq0.05',save=saving)
+
+plot_input = {'Cases':['A.2.1_0.15'], 'Models':['PP'],'Dimension':['r_pos',0.25,0.5,0.75], 'Variable':['a']}
+plotting(plot_input,'a_radial_PP_CTfreq0.15',save=saving)
+
+plot_input = {'Cases':['A.2.1_0.3'], 'Models':['PP'],'Dimension':['r_pos',0.25,0.5,0.75], 'Variable':['a']}
+plotting(plot_input,'a_radial_PP_CTfreq0.3',save=saving)
+
+#%% Model comparison - step input
+
+#Global 2D plots
 plot_input = {'Cases':['A.1.1'], 'Models':['Steady','PP','LM','O'], 'Dimension':['2D'], 'Variable':['CT']}
 plotting(plot_input,'CT_3models_CTstep1',save=saving)
 
 plot_input = {'Cases':['A.1.1'], 'Models':['Steady','PP','LM','O'], 'Dimension':['2D'], 'Variable':['a_global']}
 plotting(plot_input,'a_global_3models_CTstep1',save=saving)
 
-
+#Radial 2D plots
 plot_input = {'Cases':['A.1.1'], 'Models':['Steady','PP','LM','O'], 'Dimension':['r_pos',0.25], 'Variable':['a']}
 plotting(plot_input,'a_global_0.25_3models_CTstep1',save=saving)
 
@@ -252,12 +280,14 @@ plotting(plot_input,'a_global_0.75_3models_CTstep1',save=saving)
 
 #%% Step comparison
 
+#Global 2D plots
 plot_input = {'Cases':['A.1.1', 'A.1.2', 'A.1.3', 'A.1.4'], 'Models':['PP'], 'Dimension':['2D'], 'Variable':['CT']}
 plotting(plot_input,'CT_PP_4CTsteps',save=saving)
 
 plot_input = {'Cases':['A.1.1', 'A.1.2', 'A.1.3', 'A.1.4'], 'Models':['PP'], 'Dimension':['2D'], 'Variable':['a_global']}
 plotting(plot_input,'a_global_PP_4CTsteps',save=saving)
 
+#3D pots
 v = ['alpha','phi','a','ap','f_tan','f_nor']
 for i in range(len(v)):
     plot_input = {'Cases':['A.1.1'], 'Models':['PP'], 'Dimension':['3D'], 'Variable':[v[i]]}
@@ -265,53 +295,80 @@ for i in range(len(v)):
 
 #%% Oscillation comparison
 
+#Global 2D plots
 plot_input = {'Cases':['A.2.1_0.05', 'A.2.1_0.15', 'A.2.1_0.3'], 'Models':['PP'], 'Dimension':['2D'], 'Variable':['CT']}
 plotting(plot_input,'CT_PP_3freq_amp0.5',save=saving)
 
 plot_input = {'Cases':['A.2.1_0.05', 'A.2.1_0.15', 'A.2.1_0.3'], 'Models':['PP'], 'Dimension':['2D'], 'Variable':['a_global']}
 plotting(plot_input,'a_global_PP_3freq_amp0.5',save=saving)
 
+#Global 2D plots - Models
 plot_input = {'Cases':['A.2.1_0.3'], 'Models':['Steady','PP','LM','O'], 'Dimension':['2D'], 'Variable':['CT']}
 plotting(plot_input,'CT_4models_freq0.3_amp0.5',save=saving)
 
 plot_input = {'Cases':['A.2.1_0.3'], 'Models':['Steady','PP','LM','O'], 'Dimension':['2D'], 'Variable':['a_global']}
 plotting(plot_input,'a_global_4models_freq0.3_amp0.5',save=saving)
 
+#3D plots
 v = ['alpha','phi','a','ap','f_tan','f_nor']
 for i in range(len(v)):
     plot_input = {'Cases':['A.2.1_0.3'], 'Models':['PP'], 'Dimension':['3D'], 'Variable':[v[i]]}
     plotting(plot_input,v[i]+'_PP_3D_freq0.3_amp0.5',save=saving)
 
 
-v = ['alpha','phi','a','ap','f_tan','f_nor']
-for i in range(len(v)):
-    plot_input = {'Cases':['A.2.1_0.3'], 'Models':['PP'], 'Dimension':['3D'], 'Variable':[v[i]]}
-    plotting(plot_input,v[i]+'_PPnorm_3D_freq0.3_amp0.5',save=saving)
-
-
 #%% U_inf comparison
 
+#Global 2D plots - models in step
 plot_input = {'Cases':['B.1.1'], 'Models':['Steady','PP','LM','O'], 'Dimension':['2D'], 'Variable':['CT']}
 plotting(plot_input,'CT_4models_Ustep1',save=saving)
 
-plot_input = {'Cases':['B.1.1'], 'Models':['Steady','PP','LM','O'], 'Dimension':['2D'], 'Variable':['CT']}
+plot_input = {'Cases':['B.1.1'], 'Models':['Steady','PP','LM','O'], 'Dimension':['2D'], 'Variable':['a_global']}
 plotting(plot_input,'a_global_4models_Ustep1',save=saving)
 
+#Global 2D plots - step sizes
 plot_input = {'Cases':['B.1.1','B.1.2', 'B.1.3', 'B.1.4'], 'Models':['PP'], 'Dimension':['2D'], 'Variable':['CT']}
 plotting(plot_input,'CT_PP_4Usteps',save=saving)
 
 plot_input = {'Cases':['B.1.1','B.1.2', 'B.1.3', 'B.1.4'], 'Models':['PP'], 'Dimension':['2D'], 'Variable':['a_global']}
 plotting(plot_input,'a_global_PP_4Usteps',save=saving)
 
+#Global 2D plots - frequencies
 plot_input = {'Cases':['B.2.1_0.05', 'B.2.1_0.15', 'B.2.1_0.3'], 'Models':['PP'], 'Dimension':['2D'], 'Variable':['CT']}
-plotting(plot_input,'CT_PP_3freqs_amp0.5',save=saving)
+plotting(plot_input,'CT_PP_3freqs_amp0.5_Uinf',save=saving)
 
 plot_input = {'Cases':['B.2.1_0.05', 'B.2.1_0.15', 'B.2.1_0.3'], 'Models':['PP'], 'Dimension':['2D'], 'Variable':['a_global']}
-plotting(plot_input,'a_global_PP_3freqs_amp0.5',save=saving)
+plotting(plot_input,'a_global_PP_3freqs_amp0.5_Uinf',save=saving)
 
+#Global 2D plots - models in oscillation
 plot_input = {'Cases':['B.2.3_0.3'], 'Models':['Steady','PP','LM','O'], 'Dimension':['2D'], 'Variable':['CT']}
 plotting(plot_input,'CT_4models_freq0.3_amp0.5_mean1.2',save=saving)
 
 plot_input = {'Cases':['B.2.3_0.3'], 'Models':['Steady','PP','LM','O'], 'Dimension':['2D'], 'Variable':['a_global']}
 plotting(plot_input,'a_global_4models_freq0.3_amp0.5_mean1.2',save=saving)
+
+
+#%% Effect of frequency on phase
+
+#Global 2D plots - different models and different frequencies
+plot_input = {'Cases':['A.2.1_0.05'], 'Models':['Steady','PP','LM','O'], 'Dimension':['2D'], 'Variable':['CT']}
+plotting(plot_input,'CT_4models_freq0.05_comp',save=saving)
+
+plot_input = {'Cases':['A.2.1_0.05'], 'Models':['Steady','PP','LM','O'], 'Dimension':['2D'], 'Variable':['a_global']}
+plotting(plot_input,'a_global_4models_freq0.05_comp',save=saving)
+
+plot_input = {'Cases':['A.2.1_0.15'], 'Models':['Steady','PP','LM','O'], 'Dimension':['2D'], 'Variable':['CT']}
+plotting(plot_input,'CT_4models_freq0.15_comp',save=saving)
+
+plot_input = {'Cases':['A.2.1_0.15'], 'Models':['Steady','PP','LM','O'], 'Dimension':['2D'], 'Variable':['CT']}
+plotting(plot_input,'a_global_4models_freq0.15_comp',save=saving)
+
+plot_input = {'Cases':['A.2.1_0.3'], 'Models':['Steady','PP','LM','O'], 'Dimension':['2D'], 'Variable':['CT']}
+plotting(plot_input,'CT_4models_freq0.3_comp',save=saving)
+
+plot_input = {'Cases':['A.2.1_0.3'], 'Models':['Steady','PP','LM','O'], 'Dimension':['2D'], 'Variable':['a_global']}
+plotting(plot_input,'a_global_4models_freq0.3_comp',save=saving)
+
+
+
+
 
