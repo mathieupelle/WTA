@@ -359,7 +359,7 @@ plotting(plot_input,'a_global_4models_freq0.05_comp',save=saving)
 plot_input = {'Cases':['A.2.1_0.15'], 'Models':['Steady','PP','LM','O'], 'Dimension':['2D'], 'Variable':['CT']}
 plotting(plot_input,'CT_4models_freq0.15_comp',save=saving)
 
-plot_input = {'Cases':['A.2.1_0.15'], 'Models':['Steady','PP','LM','O'], 'Dimension':['2D'], 'Variable':['CT']}
+plot_input = {'Cases':['A.2.1_0.15'], 'Models':['Steady','PP','LM','O'], 'Dimension':['2D'], 'Variable':['a_global']}
 plotting(plot_input,'a_global_4models_freq0.15_comp',save=saving)
 
 plot_input = {'Cases':['A.2.1_0.3'], 'Models':['Steady','PP','LM','O'], 'Dimension':['2D'], 'Variable':['CT']}
