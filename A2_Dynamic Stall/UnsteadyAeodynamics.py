@@ -8,19 +8,20 @@ Created on Thu Jul  8 16:03:22 2021
 import numpy as np
 
 class UnsteadyAerodynamics:
-    def __init__(self, time):
+    def __init__(self, time, N_radial):
         """
           Class that computes unsteady airfoil performance.
 
           Parameters
           ----------
           time : Time vector
+          N_radial: Number of radial elements
 
         """
 
         self.time = time
         #Empty arrays to store parameters
-        self.X, self.Y, self.dalpha_qs_dt, self.D, self.delta_dalpha_qs_dt, self.Dp, self.Cn_P, self.f, self.Dbl, self.tau_v, self.Cvortex, self.Cn_vortex, self.Cn = np.zeros((13, len(self.time)))
+        self.X, self.Y, self.dalpha_qs_dt, self.D, self.delta_dalpha_qs_dt, self.Dp, self.Cn_P, self.f, self.Dbl, self.tau_v, self.Cvortex, self.Cn_vortex, self.Cn = np.zeros((13, N_radial, len(self.time)+1))
 
     def Duhamel(self, X, Y, ds, dalpha, order=2, A1=0.3, b1=0.14, A2=0.7, b2=0.53):
         """
@@ -233,7 +234,7 @@ class UnsteadyAerodynamics:
 
 
 
-    def Beddoes_Leishman(self, airfoil, t, alpha, h, LE_sep=True):
+    def Beddoes_Leishman(self, airfoil, i, t, alpha, h, Uinf, LE_sep=True):
         """
         Applies the Beddoes_Leishman dynamic stall model to specified airfoil and for specified conditions,
 
@@ -259,57 +260,60 @@ class UnsteadyAerodynamics:
                       'n2':0.45, 'n3':0.6,
                       'c2': 0.82, 'c3': 0.75, 'c4':0.01}
 
-        dt = self.time[t+1]-self.time[t] #Time step
+        if t==0:
+            dt = self.time[t+1]-self.time[t] #Time step
+            dalpha_dt = (alpha[t]-0)/dt #AoA derivative
+            dh_dt = (h[t]-0)/dt #Heave derivative
+        else:
+            dt = self.time[t]-self.time[t-1] #Time step
+            dalpha_dt = (alpha[t]-alpha[t-1])/dt #AoA derivative
+            dh_dt = (h[t]-h[t-1])/dt #Heave derivative
+
         ds = 2*Uinf*dt/c #Time to semichords
 
-        #Derivatives of motion
-        dalpha_dt = (alpha[t+1]-alpha[t])/dt
-        dh_dt = (h[t+1]-h[t])/dt
         #Quasi-steayd AoA from airfoil motion
-        alpha_qs1 = alpha[t] + dalpha_dt*c/2/Uinf-dh_dt/Uinf
-        alpha_qs2 = alpha[t+1] + dalpha_dt*c/2/Uinf-dh_dt/Uinf
-        self.dalpha_qs_dt[t+1] = (alpha_qs2-alpha_qs1)/dt
+        alpha_qs1 = alpha[t-1] + dalpha_dt*c/2/Uinf-dh_dt/Uinf
+        alpha_qs2 = alpha[t] + dalpha_dt*c/2/Uinf-dh_dt/Uinf
+        self.dalpha_qs_dt[i, t] = (alpha_qs2-alpha_qs1)/dt
 
         #### Unsteady attached flow ####
-        self.X[t+1], self.Y[t+1] = self.Duhamel(self.X[t], self.Y[t], ds, alpha_qs2-alpha_qs1) #Lag states
-        delta_dalpha_qs_dt = self.dalpha_qs_dt[t+1]- self.dalpha_qs_dt[t]
-        self.D[t+1], Kalpha = self.Deficiency_NC(self.D[t], delta_dalpha_qs_dt, dt, c) #Deficiency for NC loads
+        self.X[i, t], self.Y[i, t] = self.Duhamel(self.X[i, t-1], self.Y[i, t-1], ds, alpha_qs2-alpha_qs1) #Lag states
+        delta_dalpha_qs_dt = self.dalpha_qs_dt[i, t]- self.dalpha_qs_dt[i, t-1]
+        self.D[i, t], Kalpha = self.Deficiency_NC(self.D[i, t-1], delta_dalpha_qs_dt, dt, c) #Deficiency for NC loads
 
-        alpha_eq = alpha_qs2 - self.X[t+1] - self.Y[t+1] #Equivalent AoA (lag from wake effects)
+        alpha_eq = alpha_qs2 - self.X[i, t] - self.Y[i, t] #Equivalent AoA (lag from wake effects)
         Cn_C = dCn_dalpha*(alpha_eq-alpha0) #Circulatory loads
-        Cn_NC = 4*Kalpha*c/Uinf*(self.dalpha_qs_dt[t+1]-self.D[t+1]) #Non-circulatory loads
-        self.Cn_P[t+1] = Cn_NC + Cn_C #Total unsteady loads
+        Cn_NC = 4*Kalpha*c/Uinf*(self.dalpha_qs_dt[i, t]-self.D[i, t]) #Non-circulatory loads
+        self.Cn_P[i, t] = Cn_NC + Cn_C #Total unsteady loads
 
         #### Non-linear TE seperation ####
-        self.Dp[t+1] = self.Pressure_lag(self.Dp[t], ds, self.Cn_P[t+1]-self.Cn_P[t]) #Pressure lag deficiency
+        self.Dp[i, t] = self.Pressure_lag(self.Dp[i, t-1], ds, self.Cn_P[i, t]-self.Cn_P[i, t-1]) #Pressure lag deficiency
 
-        alpha_f = (self.Cn_P[t+1]-self.Dp[t+1])/dCn_dalpha+alpha0
-        self.f[t+1] = self.f_sep(alpha_f, parameters=parameters) #Seperation point
+        alpha_f = (self.Cn_P[i, t]-self.Dp[i, t])/dCn_dalpha+alpha0
+        self.f[i, t] = self.f_sep(alpha_f, parameters=parameters) #Seperation point
 
-        self.Dbl[t+1] = self.BL_lag(self.Dbl[t], ds, self.f[t+1]-self.f[t]) #Boundary layer lag deficiency
+        self.Dbl[i, t] = self.BL_lag(self.Dbl[i, t-1], ds, self.f[i, t]-self.f[i, t-1]) #Boundary layer lag deficiency
 
-        f_TE = self.f[t+1]-self.Dbl[t+1] #New seperation position
+        f_TE = self.f[i, t]-self.Dbl[i, t] #New seperation position
 
         Cn_f = dCn_dalpha*((1+np.sqrt(f_TE))/2)**2*(alpha_eq-alpha0)+Cn_NC #Total unsteady loads with TE seperation
 
 
-        if LE_sep: #??? CHECK
+        if LE_sep:
 
             #### LE seperation ####
-            self.tau_v[t+1] = self.Vortex_time(self.tau_v[t], self.Cn_P[t]-self.Dp[t], ds, self.dalpha_qs_dt[t+1]-self.dalpha_qs_dt[t]) #??? #Reduced time
+            self.tau_v[i, t] = self.Vortex_time(self.tau_v[i, t-1], self.Cn_P[i, t-1]-self.Dp[i, t-1], ds, self.dalpha_qs_dt[i, t]-self.dalpha_qs_dt[i, t-1]) #??? #Reduced time
 
-            self.Cvortex[t+1] = Cn_C*(1-((1+np.sqrt(f_TE))/2)**2) #Forcing term
+            self.Cvortex[i, t] = Cn_C*(1-((1+np.sqrt(f_TE))/2)**2) #Forcing term
             if t==0:
-                self.Cn_vortex[t] = self.Cvortex[t+1]
+                self.Cn_vortex[i, t] = self.Cvortex[i, t]
 
             #### Vortex shedding ####
-            self.Cn_vortex[t+1] = self.Vortex_shedding(self.Cn_vortex[t], ds, self.Cvortex[t+1]-self.Cvortex[t], self.tau_v[t]) #Vortex lift
-            self.Cn[t+1] = Cn_f+self.Cn_vortex[t+1] #Unsteady loads with TE and LE seperations
+            self.Cn_vortex[i, t] = self.Vortex_shedding(self.Cn_vortex[i, t-1], ds, self.Cvortex[i, t]-self.Cvortex[i, t-1], self.tau_v[i, t-1]) #Vortex lift
+            self.Cn[i, t] = Cn_f+self.Cn_vortex[i, t] #Unsteady loads with TE and LE seperations
 
         else:
-            self.Cn[t+1] = Cn_f #Unsteady loads with TE seperation
-
-
+            self.Cn[i, t] = Cn_f #Unsteady loads with TE seperation
 
 
 
@@ -333,10 +337,12 @@ omega_h = 0
 h = 0.3*np.sin(omega_h*time)
 
 
-unsteady_polar = UnsteadyAerodynamics(time)
+unsteady_polar = UnsteadyAerodynamics(time, 1)
 
-for t in range(len(time)-1):
-    unsteady_polar.Beddoes_Leishman(airfoil, t, alpha, h, LE_sep=True)
+for i in range(1):
+    airfoil = {'dCn_dalpha':2*np.pi, 'chord':c, 'alpha0':-2}
+    for t in range(len(time)):
+        unsteady_polar.Beddoes_Leishman(airfoil, i, t, alpha, h, Uinf, LE_sep=True)
 
 Ncycles = np.floor(time[-1]*omega/(2*np.pi))
 n_of_cycle = time*omega/(2*np.pi)
@@ -347,7 +353,7 @@ i3=np.argmin(np.abs(n_of_cycle-(Ncycles)))+1
 data_airfoil = pd.read_excel('polar DU95W180 (3).xlsx',header = 3,names=['alpha','Cl','Cd','Cm'])
 plt.figure()
 plt.plot(data_airfoil.alpha[21:], data_airfoil.Cl[21:], '--k')
-plt.plot(np.rad2deg(alpha)[i1:i3], unsteady_polar.Cn[i1:i3],'-b')
+plt.plot(np.rad2deg(alpha)[i1:i3], unsteady_polar.Cn[0,i1:i3],'-b')
 plt.grid()
 plt.xlabel(r'$\alpha$ [deg]')
 plt.ylabel('$C_{l}$ [-]')
