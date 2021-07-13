@@ -44,7 +44,7 @@ class Rotor:
     self.beta = 14*(1-self.mu) #Twist angle in degrees
     self.chord = 3*(1-self.mu)+1 #Chord length in meters
 
-    self.N_azimuth = 40 #Number of angular sections
+    self.N_azimuth = 15 #Number of angular sections
     self.azimuth = np.linspace(0,2*np.pi,self.N_azimuth)
 
     #Polar data
@@ -58,7 +58,7 @@ class Rotor:
 
     self.SetOperationalData(wind_speed=10, TSR=8, yaw=0) #Assign default values to operational conditions
 
-  def SetOperationalData(self,wind_speed,TSR,yaw,rho=1.225):
+  def SetOperationalData(self,wind_speed,TSR,yaw,omega=False,rho=1.225):
     """
       Operational data associated to the rotor
 
@@ -73,7 +73,10 @@ class Rotor:
     self.wind_speed = wind_speed
     self.TSR = TSR
     self.yaw = yaw*np.pi/180 #Input yaw should be in degrees!
-    self.omega = wind_speed*TSR/self.radius
+    if omega:
+        self.omega = omega
+    else:
+        self.omega = wind_speed*TSR/self.radius
     self.rho = rho
 
 
@@ -83,6 +86,7 @@ class Results: #Create the variables to store the results from BEMT
         self.a,self.ap,self.phi,self.alpha,self.cl,self.cd,self.f_nor,self.f_tan,self.f,self.f_tip,self.f_root,self.ite,self.chord,self.beta,self.mu,self.circulation,self.enthalpy_3,self.local_CT,self.local_CQ =  np.zeros((19,N_radial-1,N_azimuth-1,N_time))
         self.azimuth = np.zeros(N_azimuth-1)
         self.CT, self.CP, self.CQ = np.zeros((3, self.N_time))
+        self.UA_class = 0
 
     def Integrate(self,Rotor,t):
         """
@@ -211,26 +215,26 @@ class BEMT:
     def Solver(self, time = [0], conditions = [], DI_Model = "Steady" , DS_Model = 'Steady', Prandtl_correction = True,N_iter_max = 1000,delta=1e-6,):
         warnings.simplefilter('ignore') #Ignore error messages (division by 0 at the innermost sections with very high nº of points)
 
+        if self.Rotor.yaw != 0:
+            N_azimuth = self.Rotor.N_azimuth #In case input has yaw but velocity is time dependent.
 
-        if self.Rotor.yaw == 0:
-            N_azimuth = 2
+        elif len(conditions)>0:
+                if len(np.shape(np.squeeze((conditions['wind_speed']))))>1:
+                    N_azimuth = self.Rotor.N_azimuth #In case input velocity varies azimuthally
+                else:
+                    N_azimuth = 2 #Non-yawed case
         else:
-            N_azimuth = self.Rotor.N_azimuth
+            N_azimuth = 2 #Non-yawed case
 
-        self.Results = Results(self.Rotor.N_radial,N_azimuth,len(time))
+
+        self.Results = Results(self.Rotor.N_radial,self.Rotor.N_azimuth,len(time))
 
         if DS_Model != 'Steady':
-            unsteady_polar = UnsteadyAerodynamics(time, self.Rotor.N_radial)
+            unsteady_polar = UnsteadyAerodynamics(time, self.Rotor.N_radial, N_azimuth)
 
 
         for t_idx in range(len(time)):
-
-            # Set the operational conditions of this time step
-            # If steady calculation, takes the values contained in "Rotor"
             if len(time) > 1:
-                self.Rotor.SetOperationalData(wind_speed = conditions['wind_speed'][t_idx], TSR = conditions['TSR'][t_idx], yaw = conditions['yaw_angle'][t_idx])
-                self.Rotor.theta = conditions['pitch_angle'][t_idx]
-
                 dt = time[1] - time[0] #Get dt
 
             for i in range(self.Rotor.N_radial-1): #Loop of each blade section
@@ -247,6 +251,25 @@ class BEMT:
                         azimuth = (self.Rotor.azimuth[j]+self.Rotor.azimuth[j+1])/2
                         self.Results.azimuth[j] = azimuth
 
+                        #Setting new conditions for current time step
+                        if len(time) > 1:
+                            if len(conditions)>0:
+                                # In case 2D velocity array is sepcified
+                                if len(np.shape(np.squeeze((conditions['wind_speed']))))>1:
+                                    self.Rotor.wind_speed = conditions['wind_speed'][j, t_idx]
+                                    self.Rotor.omega= conditions['omega'][t_idx] #Set rotational speed for 2D velocity vector
+                                else:
+                                    conditions['wind_speed'][t_idx]
+
+                            self.Rotor.TSR = conditions['TSR'][t_idx]
+                            self.Rotor.yaw = conditions['yaw_angle'][t_idx]
+                            self.Rotor.theta = conditions['pitch_angle'][t_idx]
+                        else:
+                            if len(conditions)>0:
+                                self.Rotor.SetOperationalData(wind_speed=conditions['wind_speed'], TSR=conditions['TSR'], yaw = conditions['yaw_angle'])
+                                self.theta = conditions['pitch']
+
+
                         a,ap = (0.2,0.02) #Initialize induction factors
                         for ite in range(N_iter_max):
                             #Ve m,.-locities and angles
@@ -256,11 +279,17 @@ class BEMT:
                             #Airfoil forces
                             if DS_Model == 'Steady':
                                 [cl,cd] = self.AirfoilCoefficients(alpha)
-                            elif DS_Model =='BL':
+                            elif DS_Model =='BL_noLEsep' or DS_Model =='BL':
                                 airfoil = {'dCn_dalpha':2*np.pi, 'chord':chord, 'alpha0':-2}
-                                alpha_array = np.hstack((self.Results.a[i,j,:], alpha))
-                                unsteady_polar.Beddoes_Leishman(airfoil, i, t_idx, alpha_array, np.zeros(np.shape(time)), self.Rotor.wind_speed, LE_sep=True)
-                                cl = unsteady_polar.Cn[i,t_idx]
+                                alpha_array = np.deg2rad(self.Results.alpha[i,j,:])
+                                alpha_array[t_idx] = alpha
+                                if DS_Model =='BL_noLEsep':
+                                    LE_sep = False
+                                else:
+                                    LE_sep = True
+                                unsteady_polar.Beddoes_Leishman(airfoil, i, j, t_idx, alpha_array, np.zeros(np.shape(time)), u_rel, LE_sep=LE_sep)
+                                cn = unsteady_polar.Cn[i,j,t_idx]
+                                cl = cn*np.cos(alpha)
                                 [_,cd] = self.AirfoilCoefficients(alpha)
                             else:
                                 raise Exception('Invalid dynamic stall model?')
@@ -332,6 +361,8 @@ class BEMT:
 
             #Integrate forces to get total CP, CT, and CQ
             self.Results.Integrate(self.Rotor,t_idx)
+        if DS_Model!='Steady':
+            self.Results.UA_class = unsteady_polar
 
             #Calculate the global axial induction factor
 #            self.Results.a_global = self.NewInductionFactor(self.Results.CT, self.Rotor.yaw)
@@ -912,7 +943,7 @@ def PlotContours(data):
 
 
 class UnsteadyAerodynamics:
-    def __init__(self, time, N_radial):
+    def __init__(self, time, N_radial, N_azimuth):
         """
           Class that computes unsteady airfoil performance.
 
@@ -925,7 +956,7 @@ class UnsteadyAerodynamics:
 
         self.time = time
         #Empty arrays to store parameters
-        self.X, self.Y, self.dalpha_qs_dt, self.D, self.delta_dalpha_qs_dt, self.Dp, self.Cn_P, self.f, self.Dbl, self.tau_v, self.Cvortex, self.Cn_vortex, self.Cn = np.zeros((13, N_radial, len(self.time)+1))
+        self.X, self.Y, self.dalpha_qs_dt, self.D, self.Dp, self.Cn_P, self.f, self.Dbl, self.tau_v, self.Cvortex, self.Cn_vortex, self.Cn = np.zeros((12, N_radial-1, N_azimuth-1, len(self.time)))
 
     def Duhamel(self, X, Y, ds, dalpha, order=2, A1=0.3, b1=0.14, A2=0.7, b2=0.53):
         """
@@ -1138,7 +1169,7 @@ class UnsteadyAerodynamics:
 
 
 
-    def Beddoes_Leishman(self, airfoil, i, t, alpha, h, Uinf, LE_sep=True):
+    def Beddoes_Leishman(self, airfoil, i, j, t, alpha, h, Uinf, LE_sep=True):
         """
         Applies the Beddoes_Leishman dynamic stall model to specified airfoil and for specified conditions,
 
@@ -1178,27 +1209,27 @@ class UnsteadyAerodynamics:
         #Quasi-steayd AoA from airfoil motion
         alpha_qs1 = alpha[t-1] + dalpha_dt*c/2/Uinf-dh_dt/Uinf
         alpha_qs2 = alpha[t] + dalpha_dt*c/2/Uinf-dh_dt/Uinf
-        self.dalpha_qs_dt[i, t] = (alpha_qs2-alpha_qs1)/dt
+        self.dalpha_qs_dt[i, j, t] = (alpha_qs2-alpha_qs1)/dt
 
         #### Unsteady attached flow ####
-        self.X[i, t], self.Y[i, t] = self.Duhamel(self.X[i, t-1], self.Y[i, t-1], ds, alpha_qs2-alpha_qs1) #Lag states
-        delta_dalpha_qs_dt = self.dalpha_qs_dt[i, t]- self.dalpha_qs_dt[i, t-1]
-        self.D[i, t], Kalpha = self.Deficiency_NC(self.D[i, t-1], delta_dalpha_qs_dt, dt, c) #Deficiency for NC loads
+        self.X[i, j, t], self.Y[i, j, t] = self.Duhamel(self.X[i, j, t-1], self.Y[i, j, t-1], ds, alpha_qs2-alpha_qs1) #Lag states
+        delta_dalpha_qs_dt = self.dalpha_qs_dt[i, j, t]- self.dalpha_qs_dt[i, j, t-1]
+        self.D[i, j, t], Kalpha = self.Deficiency_NC(self.D[i, j, t-1], delta_dalpha_qs_dt, dt, c) #Deficiency for NC loads
 
-        alpha_eq = alpha_qs2 - self.X[i, t] - self.Y[i, t] #Equivalent AoA (lag from wake effects)
+        alpha_eq = alpha_qs2 - self.X[i, j, t] - self.Y[i, j, t] #Equivalent AoA (lag from wake effects)
         Cn_C = dCn_dalpha*(alpha_eq-alpha0) #Circulatory loads
-        Cn_NC = 4*Kalpha*c/Uinf*(self.dalpha_qs_dt[i, t]-self.D[i, t]) #Non-circulatory loads
-        self.Cn_P[i, t] = Cn_NC + Cn_C #Total unsteady loads
+        Cn_NC = 4*Kalpha*c/Uinf*(self.dalpha_qs_dt[i, j, t]-self.D[i, j, t]) #Non-circulatory loads
+        self.Cn_P[i, j, t] = Cn_NC + Cn_C #Total unsteady loads
 
         #### Non-linear TE seperation ####
-        self.Dp[i, t] = self.Pressure_lag(self.Dp[i, t-1], ds, self.Cn_P[i, t]-self.Cn_P[i, t-1]) #Pressure lag deficiency
+        self.Dp[i, j, t] = self.Pressure_lag(self.Dp[i, j, t-1], ds, self.Cn_P[i, j, t]-self.Cn_P[i, j, t-1]) #Pressure lag deficiency
 
-        alpha_f = (self.Cn_P[i, t]-self.Dp[i, t])/dCn_dalpha+alpha0
-        self.f[i, t] = self.f_sep(alpha_f, parameters=parameters) #Seperation point
+        alpha_f = (self.Cn_P[i, j, t]-self.Dp[i, j, t])/dCn_dalpha+alpha0
+        self.f[i, j, t] = self.f_sep(alpha_f, parameters=parameters) #Seperation point
 
-        self.Dbl[i, t] = self.BL_lag(self.Dbl[i, t-1], ds, self.f[i, t]-self.f[i, t-1]) #Boundary layer lag deficiency
+        self.Dbl[i, j, t] = self.BL_lag(self.Dbl[i, j, t-1], ds, self.f[i, j, t]-self.f[i, j, t-1]) #Boundary layer lag deficiency
 
-        f_TE = self.f[i, t]-self.Dbl[i, t] #New seperation position
+        f_TE = self.f[i, j, t]-self.Dbl[i, j, t] #New seperation position
 
         Cn_f = dCn_dalpha*((1+np.sqrt(f_TE))/2)**2*(alpha_eq-alpha0)+Cn_NC #Total unsteady loads with TE seperation
 
@@ -1206,17 +1237,17 @@ class UnsteadyAerodynamics:
         if LE_sep:
 
             #### LE seperation ####
-            self.tau_v[i, t] = self.Vortex_time(self.tau_v[i, t-1], self.Cn_P[i, t-1]-self.Dp[i, t-1], ds, self.dalpha_qs_dt[i, t]-self.dalpha_qs_dt[i, t-1]) #??? #Reduced time
+            self.tau_v[i, j, t] = self.Vortex_time(self.tau_v[i, j, t-1], self.Cn_P[i, j, t-1]-self.Dp[i, j, t-1], ds, self.dalpha_qs_dt[i, j, t]-self.dalpha_qs_dt[i, j, t-1]) #??? #Reduced time
 
-            self.Cvortex[i, t] = Cn_C*(1-((1+np.sqrt(f_TE))/2)**2) #Forcing term
+            self.Cvortex[i, j, t] = Cn_C*(1-((1+np.sqrt(f_TE))/2)**2) #Forcing term
             if t==0:
-                self.Cn_vortex[i, t] = self.Cvortex[i, t]
+                self.Cn_vortex[i, j, t] = self.Cvortex[i, j, t]
 
             #### Vortex shedding ####
-            self.Cn_vortex[i, t] = self.Vortex_shedding(self.Cn_vortex[i, t-1], ds, self.Cvortex[i, t]-self.Cvortex[i, t-1], self.tau_v[i, t-1]) #Vortex lift
-            self.Cn[i, t] = Cn_f+self.Cn_vortex[i, t] #Unsteady loads with TE and LE seperations
+            self.Cn_vortex[i, j, t] = self.Vortex_shedding(self.Cn_vortex[i, j, t-1], ds, self.Cvortex[i, j, t]-self.Cvortex[i, j, t-1], self.tau_v[i, j, t-1]) #Vortex lift
+            self.Cn[i, j, t] = Cn_f+self.Cn_vortex[i, j, t] #Unsteady loads with TE and LE seperations
 
         else:
-            self.Cn[i, t] = Cn_f #Unsteady loads with TE seperation
+            self.Cn[i, j, t] = Cn_f #Unsteady loads with TE seperation
 
 
