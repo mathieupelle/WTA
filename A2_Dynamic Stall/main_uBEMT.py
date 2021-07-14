@@ -27,7 +27,8 @@ Calc.CpLambda(TSR_list = list(np.linspace(5,15,50)), theta_list = list(np.linspa
 U_0 = 10
 TSR_0 = 8
 Omega_0 = TSR_0*U_0/Geometry.radius
-pitch =  Calc.getPitchAngle_fromCT(CT = 8/9,TSR = TSR_0) #Calculate the pitch angle corresponding to the optimal CT=8/9
+#pitch =  Calc.getPitchAngle_fromCT(CT = 8/9,TSR = TSR_0) #Calculate the pitch angle corresponding to the optimal CT=8/9
+pitch = 0
 
 #Time and frequency settings
 k = 0
@@ -37,7 +38,7 @@ T = 1
 time_arr = np.arange(0,5*T,0.1)
 
 #Inflow velocity vector time and and azimuth dependent
-Calc.Rotor.N_azimuth = 9
+Calc.Rotor.N_azimuth = 15
 phi = np.linspace(0,2*np.pi,Calc.Rotor.N_azimuth)
 U_arr = np.zeros((Calc.Rotor.N_azimuth-1, len(time_arr)))
 for i in range(len(phi)-1):
@@ -45,8 +46,8 @@ for i in range(len(phi)-1):
     U_arr[i,:] = (1 + 0.5*np.cos(omega*time_arr)*np.cos(azimuth))*U_0
 
 #Models to test
-DS_models = ['Steady','BL_noLEsep','BL']
-
+#DS_models = ['Steady','BL_noLEsep','BL']
+DS_models = ['BL']
 #Initialise the results variable
 Dyn1 = {'time':time_arr, 'results': []}
 

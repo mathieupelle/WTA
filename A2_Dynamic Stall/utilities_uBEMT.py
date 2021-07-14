@@ -224,14 +224,20 @@ class BEMT:
                 if len(np.shape(np.squeeze((conditions['wind_speed']))))>1:
                     N_azimuth = self.Rotor.N_azimuth
                     dt = 2*np.pi/(N_azimuth-1)/conditions['omega'][0] #Calculate new time differential based on the rotor speed
-                    time = np.arange(0,time[-1]+dt,dt) #Build new time array in consequence
+                    time_org = time #Storing all time array for conditions redefintion
+                    time = np.arange(0,time[-1]+dt*0.5,dt) #Build new time array in consequence
                     print('Time array has been modified to match the azimuthal discretisation')
-                    print('You are running with a dt of',dt,'s')
+                    print('You are running with a dt of',round(dt,3),'s. Total num of time steps:',len(time))
+                    #If this the case, unfortunately we need to redefine the conditions dictionary
+                    conditions = self.get_newConditions(conditions,time,time_org)
                 else:
                     N_azimuth = 2 #Non-yawed case
         else:
             N_azimuth = 2 #Non-yawed case
-
+            
+        #Based on the new number of azimuthal points, redefine the azimuthal spacing
+        self.Rotor.azimuth = np.linspace(0,2*np.pi,N_azimuth)       
+        
         #Initialise results class
         self.Results = Results(self.Rotor.N_radial,self.Rotor.N_azimuth,len(time))
         self.Results.time = time #Save time array in case we change it
@@ -643,6 +649,24 @@ class BEMT:
 
         #Interpolate the pitch value fiven the desired CT and return it
         return np.interp(CT,CT_arr,TSR_arr)
+    
+    def get_newConditions(self,cond,time_new,time_org):
+        """
+        Need this amazing function to interpolate the new conditions given 
+        the corrected time array that matches the azmithal discretisation
+        """
+        cond['omega'] = np.interp(time_new,time_org,cond['omega'])
+        cond['pitch_angle'] = np.interp(time_new,time_org,cond['pitch_angle'])
+        cond['TSR'] = np.interp(time_new,time_org,cond['TSR'])
+        cond['yaw_angle'] = np.interp(time_new,time_org,cond['yaw_angle'])
+        
+        #Workarounds for the wind speed because we have azimuthal discretisation
+        old_wsp = cond['wind_speed']
+        cond['wind_speed'] = np.zeros((old_wsp.shape[0],len(time_new)))
+        for i in range(len(old_wsp)):
+            cond['wind_speed'][i,:] = np.interp(time_new,time_org,np.squeeze(old_wsp[i,:]))
+        
+        return cond
 
 
 class Optimizer:
