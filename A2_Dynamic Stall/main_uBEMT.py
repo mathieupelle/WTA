@@ -11,7 +11,7 @@ import pickle
 
 #%% General inputs
 #Save results?
-saving = True
+saving = False
 
 Geometry = Rotor(N_radial_sections = 15) #Define the rotor geometry
 
@@ -33,13 +33,13 @@ pitch =  Calc.getPitchAngle_fromCT(CT = 8/9,TSR = TSR_0) #Calculate the pitch an
 k = 0
 omega = k*U_0/Geometry.radius
 #T = 2*np.pi/omega
-T = 20
+T = 1
 time_arr = np.arange(0,5*T,0.1)
 
 #Inflow velocity vector time and and azimuth dependent
-N_azimuth = 15
-phi = np.linspace(0,2*np.pi,N_azimuth)
-U_arr = np.zeros((N_azimuth-1, len(time_arr)))
+Calc.Rotor.N_azimuth = 9
+phi = np.linspace(0,2*np.pi,Calc.Rotor.N_azimuth)
+U_arr = np.zeros((Calc.Rotor.N_azimuth-1, len(time_arr)))
 for i in range(len(phi)-1):
     azimuth = (phi[i]+phi[i+1])/2
     U_arr[i,:] = (1 + 0.5*np.cos(omega*time_arr)*np.cos(azimuth))*U_0

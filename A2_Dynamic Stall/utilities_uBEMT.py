@@ -215,19 +215,27 @@ class BEMT:
     def Solver(self, time = [0], conditions = [], DI_Model = "Steady" , DS_Model = 'Steady', Prandtl_correction = True,N_iter_max = 1000,delta=1e-6,):
         warnings.simplefilter('ignore') #Ignore error messages (division by 0 at the innermost sections with very high nº of points)
 
+
+        ## Depending on flow conditions, decide on azimuthal discretization
         if self.Rotor.yaw != 0:
             N_azimuth = self.Rotor.N_azimuth #In case input has yaw but velocity is time dependent.
 
         elif len(conditions)>0:
                 if len(np.shape(np.squeeze((conditions['wind_speed']))))>1:
-                    N_azimuth = self.Rotor.N_azimuth #In case input velocity varies azimuthally
+                    N_azimuth = self.Rotor.N_azimuth
+                    dt = 2*np.pi/(N_azimuth-1)/conditions['omega'][0] #Calculate new time differential based on the rotor speed
+                    time = np.arange(0,time[-1]+dt,dt) #Build new time array in consequence
+                    print('Time array has been modified to match the azimuthal discretisation')
+                    print('You are running with a dt of',dt,'s')
                 else:
                     N_azimuth = 2 #Non-yawed case
         else:
             N_azimuth = 2 #Non-yawed case
 
-
+        #Initialise results class
         self.Results = Results(self.Rotor.N_radial,self.Rotor.N_azimuth,len(time))
+        self.Results.time = time #Save time array in case we change it
+        
 
         if DS_Model != 'Steady':
             unsteady_polar = UnsteadyAerodynamics(time, self.Rotor.N_radial, N_azimuth)
@@ -276,23 +284,27 @@ class BEMT:
                             [u_tan,u_nor,u_rel,phi] = self.RelativeVelocities(a,ap,mu,azimuth)
                             alpha = phi - (beta + self.Rotor.theta)*np.pi/180
 
-                            #Airfoil forces
+                            ## Airfoil forces
+                            #Take values from polar in the steady case
                             if DS_Model == 'Steady':
                                 [cl,cd] = self.AirfoilCoefficients(alpha)
+                            #Use dynamic stall if required 
                             elif DS_Model =='BL_noLEsep' or DS_Model =='BL':
-                                airfoil = {'dCn_dalpha':2*np.pi, 'chord':chord, 'alpha0':-2}
-                                alpha_array = np.deg2rad(self.Results.alpha[i,j,:])
+                                airfoil = {'dCn_dalpha':2*np.pi, 'chord':chord, 'alpha0':-2} #Assign values of the section of analysis
+                                alpha_array = np.deg2rad(self.Results.alpha[i,j-1,:]) #Aoa time-history of the previous azimuthal position (to account for blade rotation)
                                 alpha_array[t_idx] = alpha
                                 if DS_Model =='BL_noLEsep':
                                     LE_sep = False
                                 else:
                                     LE_sep = True
+                                #Run the dynamic stall module
                                 unsteady_polar.Beddoes_Leishman(airfoil, i, j, t_idx, alpha_array, np.zeros(np.shape(time)), u_rel, LE_sep=LE_sep)
-                                cn = unsteady_polar.Cn[i,j,t_idx]
-                                cl = cn*np.cos(alpha)
-                                [_,cd] = self.AirfoilCoefficients(alpha)
+                                cn = unsteady_polar.Cn[i,j,t_idx] #Dynamic stall outputs normal force coefficient in blade coordinates
+                                cl = cn*np.cos(alpha) #Transform to lift direction 
+                                [_,cd] = self.AirfoilCoefficients(alpha) #Simply take drag from steady polar
                             else:
                                 raise Exception('Invalid dynamic stall model?')
+                            #Calculate dimensional forces from force coefficients and triangle of velocities
                             [lift,drag,f_tan,f_nor] = self.Forces(chord,phi,u_rel,cl,cd)
 
                             #Thrust coefficient
