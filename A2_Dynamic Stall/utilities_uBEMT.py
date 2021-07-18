@@ -116,8 +116,12 @@ class Results: #Create the variables to store the results from BEMT
         self.CT[t] = np.sum(f_nor.transpose()*Rotor.n_blades*d_azi/2/np.pi*d_r)/(0.5*Rotor.rho*Rotor.wind_speed**2*np.pi*Rotor.radius**2)
 
         #Global CP
-        dTorque = f_tan[:,0]*d_r*self.mu[:,0,0]*Rotor.radius*d_azi/2/np.pi
-        self.CP[t] = np.sum(dTorque*Rotor.n_blades*Rotor.omega)/(0.5*Rotor.rho*Rotor.wind_speed**3*np.pi*Rotor.radius**2)
+        CP = 0
+        for i in range(f_tan.shape[1]):
+            dTorque = f_tan[:,i]*d_r*self.mu[:,0,0]*Rotor.radius*d_azi/2/np.pi
+            dCP = np.sum(dTorque*Rotor.n_blades*Rotor.omega)/(0.5*Rotor.rho*Rotor.wind_speed**3*np.pi*Rotor.radius**2)
+            CP = CP + dCP
+        self.CP[t] = CP
 
         #Global CQ
         self.CQ[t] = np.sum(dTorque*Rotor.n_blades)/(0.5*Rotor.rho*Rotor.wind_speed**2*np.pi*Rotor.radius**3)
@@ -227,7 +231,8 @@ class BEMT:
                     time_org = time #Storing all time array for conditions redefintion
                     time = np.arange(0,time[-1]+dt*0.5,dt) #Build new time array in consequence
                     print('Time array has been modified to match the azimuthal discretisation')
-                    print('You are running with a dt of',round(dt,3),'s. Total num of time steps:',len(time))
+                    print('You are running with a dt of',round(dt,3),'s.')
+                    print('New num of time steps:',len(time),'- Old num of time steps:',len(time_org))
                     #If this the case, unfortunately we need to redefine the conditions dictionary
                     conditions = self.get_newConditions(conditions,time,time_org)
                 else:
@@ -248,6 +253,7 @@ class BEMT:
 
 
         for t_idx in range(len(time)):
+            print(t_idx)
             if len(time) > 1:
                 dt = time[1] - time[0] #Get dt
 
@@ -378,6 +384,7 @@ class BEMT:
                             [a,ap,phi*180/np.pi,alpha*180/np.pi,cl,cd,f_nor,f_tan,f,f_tip,f_root,ite,CT]
 
             #Integrate forces to get total CP, CT, and CQ
+            self.Rotor.wind_speed = np.mean(conditions['wind_speed'][:, t_idx])
             self.Results.Integrate(self.Rotor,t_idx)
         if DS_Model!='Steady':
             self.Results.UA_class = unsteady_polar
@@ -655,6 +662,9 @@ class BEMT:
         Need this amazing function to interpolate the new conditions given 
         the corrected time array that matches the azmithal discretisation
         """
+        print(time_new.shape)
+        print(time_org.shape)
+        print(cond['omega'].shape)
         cond['omega'] = np.interp(time_new,time_org,cond['omega'])
         cond['pitch_angle'] = np.interp(time_new,time_org,cond['pitch_angle'])
         cond['TSR'] = np.interp(time_new,time_org,cond['TSR'])
