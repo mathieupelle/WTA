@@ -29,7 +29,7 @@ U_0 = 10
 TSR_0 = 8
 Omega_0 = TSR_0*U_0/Geometry.radius
 #pitch =  Calc.getPitchAngle_fromCT(CT = 8/9,TSR = TSR_0) #Calculate the pitch angle corresponding to the optimal CT=8/9
-pitch = -2
+pitch = -6
 
 #Time and frequency settings
 k = 0

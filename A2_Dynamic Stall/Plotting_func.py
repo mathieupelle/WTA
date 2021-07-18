@@ -37,11 +37,14 @@ def Plotting_following_blade(res,mod_labels,rad_pos = [0.4,0.6,0.8],lims=False):
                     az_idx = 0
             
             l0, = plt.plot(res[j].time,x[0,:],color=cols[j])
+            l0, = plt.plot(res[j].time/5,x[0,:],color=cols[j])
             line_handles.append(l0)
             try:
                 l1, = plt.plot(res[j].time,x[1,:],'--',color=cols[j])
+                l1, = plt.plot(res[j].time/5,x[1,:],'--',color=cols[j])
                 try:
                     l2, = plt.plot(res[j].time,x[2,:],'-.',color=cols[j])   
+                    l2, = plt.plot(res[j].time/5,x[2,:],'-.',color=cols[j])   
                     sec_leg_labels = list(np.round_(res[j].mu[idx_mu.astype(int),0,0],2))
                     sec_legend = plt.legend(handles=[l0,l1,l2], labels= sec_leg_labels)
                     # Add the legend manually to the current Axes.
@@ -56,6 +59,7 @@ def Plotting_following_blade(res,mod_labels,rad_pos = [0.4,0.6,0.8],lims=False):
                 # Create another legend for the second line.
                 #plt.legend(handles=[line2], loc='lower right')          
         plt.xlabel('Time [s]')
+        plt.xlabel('Time $t U / R$ [-]')
         plt.ylabel(labels[i])
         plt.grid()
         plt.legend(handles = line_handles,labels = mod_labels,loc=4)
@@ -78,9 +82,11 @@ def Plotting_integral_quantities(res,mod_labels,lims=False):
         for j in range(len(res)):
             Z =getattr(res[j],par)
             plt.plot(res[j].time,Z,label=mod_labels[j])
+            plt.plot(res[j].time/5,Z,label=mod_labels[j])
             
             
         plt.xlabel('Time [s]')
+        plt.xlabel('Time $t U / R$ [-]')
         plt.ylabel(labels[i])
         plt.grid()
         plt.legend(loc='best')
