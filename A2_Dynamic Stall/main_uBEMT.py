@@ -7,7 +7,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from utilities_uBEMT import Rotor,BEMT,PlotContours
-from Plotting_func import Plotting_following_blade,Plotting_integral_quantities
+from Plotting_func import Plotting_following_blade,Plotting_integral_quantities,Plotting_polars
 import pickle
 
 #%% General inputs
@@ -39,7 +39,7 @@ T = 2
 time_arr = np.arange(0,5*T,0.1)
 
 #Inflow velocity vector time and and azimuth dependent
-Calc.Rotor.N_azimuth = 50
+Calc.Rotor.N_azimuth = 30
 phi = np.linspace(0,2*np.pi,Calc.Rotor.N_azimuth)
 U_arr = np.zeros((Calc.Rotor.N_azimuth-1, len(time_arr)))
 for i in range(len(phi)-1):
@@ -77,7 +77,7 @@ if saving:
 
 Plotting_following_blade(Dyn1['results'],['Steady','BL_noLEsep','BL'],rad_pos=[0.4,0.8])#,lims=[6,10])
 Plotting_integral_quantities(Dyn1['results'],['Steady','BL_noLEsep','BL'])#,lims=[6,10])
-
+Plotting_polars(Dyn1['results'], rad_pos=[0.4,0.8], omega=1.6)
 
 #%% Case Dyn2: Dynamic inflow due to change in inflow velocity in time and azimuthal direction.
 
