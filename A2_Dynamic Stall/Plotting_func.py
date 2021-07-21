@@ -9,13 +9,15 @@ x = 6
 plt.rc('figure', figsize=[46.82 * .5**(.5 * x), 33.11 * .5**(.5 * x)])
 plt.rc('font', family='serif')
 
+save = True
 
-def Plotting_following_blade(res,mod_labels,rad_pos = [0.4,0.6,0.8],lims=False):
-    var = ['alpha','phi','a','ap','f_tan','f_nor','cl']
-    labels = [r'$\alpha$ [deg]','$\phi$ [deg]', 'a [-]','$a^,[-]$', '$C_t$ [-]', '$C_n$ [-]', '$C_{l}$ [-]']
+def Plotting_following_blade(res,mod_labels,save_name,rad_pos = [0.4,0.6,0.8],lims=False):
+    var = ['alpha','phi','a','ap','f_tan','f_nor','cl','v_rel']
+    labels = [r'$\alpha$ [deg]','$\phi$ [deg]', 'a [-]','$a^,[-]$', '$C_t$ [-]', '$C_n$ [-]', '$C_{l}$ [-]','$U_{rel}$ [m/s]']
 
-    cols = ['tab:blue','tab:orange','tab:green']
-
+    #cols = ['tab:blue','tab:orange','tab:green']
+    cols = ['b','r','g']
+    
     #Get the index of the wanted radial positions
     idx_mu = np.zeros(len(rad_pos))
     for i,val in enumerate(rad_pos):
@@ -68,18 +70,22 @@ def Plotting_following_blade(res,mod_labels,rad_pos = [0.4,0.6,0.8],lims=False):
         if lims:
             plt.xlim(lims)
         plt.show()
+        if save==True:
+            plt.savefig('figures/'+save_name+'_'+par+'.pdf')
 
 
 
-def Plotting_integral_quantities(res,mod_labels,lims=False):
+
+def Plotting_integral_quantities(res,mod_labels,save_name,lims=False):
     var = ['CT','CP']
     labels=[r'$C_T$',r'$C_P$']
+    cols = ['b','r','g']
 
     for i,par in enumerate(var):
         plt.figure()
         for j in range(len(res)):
             Z =getattr(res[j],par)
-            plt.plot(res[j].time/5,Z,label=mod_labels[j])
+            plt.plot(res[j].time/5,Z,label=mod_labels[j],color=cols[j])
         
         plt.xlabel('Time [s]')
         plt.xlabel('Time $t U / R$ [-]')
@@ -89,16 +95,19 @@ def Plotting_integral_quantities(res,mod_labels,lims=False):
         if lims:
             plt.xlim(lims)
         plt.show()
+        if save==True:
+            plt.savefig('figures/'+save_name+'_'+par+'.pdf')
 
 
-def Plotting_polars(res, rad_pos, omega):
+def Plotting_polars(res, rad_pos, omega,save_name):
 
     time = res[0].time
     T = 2*np.pi/omega
     idx1 = np.argmin(np.abs(time-2*T))
-    idx1 = 0
-    #idx2 = np.argmin(np.abs(time-3*T))+1
-    idx2 = len(time)
+    #idx1 = 0
+    idx2 = np.argmin(np.abs(time-4*T))+1
+    #idx2 = len(time)
+    cols = ['b','g','r']
     
     idx_mu = np.zeros(len(rad_pos))
     for i,val in enumerate(rad_pos):
@@ -133,5 +142,11 @@ def Plotting_polars(res, rad_pos, omega):
                 az_idx = 0
 
         for l in range(len(rad_pos)):
-            plt.plot(a[l,idx1:idx2],x[l,idx1:idx2], label='$\mu$='+str(rad_pos[l]))
+            plt.plot(a[l,idx1:idx2],x[l,idx1:idx2],'.-', label='$\mu$='+str(rad_pos[l]),color=cols[l])
+        data_airfoil = pd.read_excel('polar DU95W180 (3).xlsx',header = 3,names=['alpha','Cl','Cd','Cm'])
+        plt.plot(data_airfoil.alpha[21:], data_airfoil.Cl[21:], '--k')
+        plt.xlim([a[:,idx1:idx2].min()-2,a[:,idx1:idx2].max()+2])
         plt.legend()
+        if save==True:
+            plt.savefig('figures/'+save_name+str(j)+'.pdf')
+ 
