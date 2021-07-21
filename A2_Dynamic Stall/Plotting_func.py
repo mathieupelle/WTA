@@ -29,6 +29,8 @@ def Plotting_following_blade(res,mod_labels,save_name,rad_pos = [0.4,0.6,0.8],li
         line_handles = []
         for j in range(len(res)): #We want to compare all the results
             Z = getattr(res[j], par)
+            if par=='f_tan' or par=='f_nor':
+                Z = Z/(0.5*1.225*10**2*50)
             x = np.zeros((len(rad_pos),len(res[j].time)))
             az_idx = 0
             for k in range(x.shape[1]): #We want to check how the blade position changes with time
@@ -38,7 +40,12 @@ def Plotting_following_blade(res,mod_labels,save_name,rad_pos = [0.4,0.6,0.8],li
                 else:
                     az_idx = 0
 
-            l0, = plt.plot(res[j].time/5,x[0,:],color=cols[j])
+            if lims:
+                time = res[j].time/5-lims[0]
+
+            else:
+                time = res[j].time/5
+
             line_handles.append(l0)
             try:
                 l1, = plt.plot(res[j].time/5,x[1,:],'--',color=cols[j])
@@ -68,7 +75,7 @@ def Plotting_following_blade(res,mod_labels,save_name,rad_pos = [0.4,0.6,0.8],li
         except:
             pass
         if lims:
-            plt.xlim(lims)
+            plt.xlim(list(np.array(lims)-lims[0]))
         plt.show()
         if save==True:
             plt.savefig('figures/'+save_name+'_'+par+'.pdf')
@@ -85,15 +92,18 @@ def Plotting_integral_quantities(res,mod_labels,save_name,lims=False):
         plt.figure()
         for j in range(len(res)):
             Z =getattr(res[j],par)
-            plt.plot(res[j].time/5,Z,label=mod_labels[j],color=cols[j])
-        
-        plt.xlabel('Time [s]')
+            if lims:
+                time = res[j].time/5-lims[0]
+            else:
+                time = res[j].time/5
+            plt.plot(time,Z,label=mod_labels[j],color=cols[j])
+
         plt.xlabel('Time $t U / R$ [-]')
         plt.ylabel(labels[i])
         plt.grid()
         plt.legend(loc='best')
         if lims:
-            plt.xlim(lims)
+            plt.xlim(list(np.array(lims)-lims[0]))
         plt.show()
         if save==True:
             plt.savefig('figures/'+save_name+'_'+par+'.pdf')
@@ -108,7 +118,7 @@ def Plotting_polars(res, rad_pos, omega,save_name):
     idx2 = np.argmin(np.abs(time-4*T))+1
     #idx2 = len(time)
     cols = ['b','g','r']
-    
+
     idx_mu = np.zeros(len(rad_pos))
     for i,val in enumerate(rad_pos):
         idx_mu[i] = (np.abs(res[0].mu[:,0,0] - val)).argmin()
@@ -149,4 +159,3 @@ def Plotting_polars(res, rad_pos, omega,save_name):
         plt.legend()
         if save==True:
             plt.savefig('figures/'+save_name+str(j)+'.pdf')
- 
