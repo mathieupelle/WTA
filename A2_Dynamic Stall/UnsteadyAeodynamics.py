@@ -70,7 +70,7 @@ class UnsteadyAerodynamics:
     #NC terms
     def Deficiency_NC(self, D, delta_dalpha_qs_dt, dt, c, Kalpha=0.75):
         """
-        Computes value of deficiency function used fo non-circulatory loads.
+        Computes value of deficiency function used for non-circulatory loads.
 
         Parameters
         ----------
@@ -96,16 +96,16 @@ class UnsteadyAerodynamics:
 
     def f_sep(self, alpha, parameters = False):
         """
-        Computes pseudo location of seperation poinit from angle of attack.
+        Computes pseudo location of separation point from angle of attack.
 
         Parameters
         ----------
         alpha : Angle of attack in radians.
-        parameters : Dictionnary of tunning parameters. The default is False.
+        parameters : Dictionary of tuning parameters. The default is False.
 
         Returns
         -------
-        f : Pseudo-location of seperation.
+        f : Pseudo-location of separation.
 
         """
         # a defines angle of each parts of the curve
@@ -165,7 +165,7 @@ class UnsteadyAerodynamics:
         ----------
         Dbl : Previous deficiency term.
         ds : Semichord step.
-        delta_f : Difference in pseudo location of seperation point at current and previous times.
+        delta_f : Difference in pseudo location of separation point at current and previous times.
         Tf : Factor dependent on airfoil shape. The default is 3.0.
 
         Returns
@@ -236,14 +236,14 @@ class UnsteadyAerodynamics:
 
     def Beddoes_Leishman(self, airfoil, i, t, alpha, h, Uinf, LE_sep=True):
         """
-        Applies the Beddoes_Leishman dynamic stall model to specified airfoil and for specified conditions,
+        Applies the Beddoes-Leishman dynamic stall model to specified airfoil and for specified conditions,
 
         Parameters
         ----------
         t : Time index
         alpha : Angle of attack array.
         h : Heave displacement array.
-        LE_sep : (De)Activate leading-edge seperation module. The default is True.
+        LE_sep : (De)Activate leading-edge separation module. The default is True.
 
         Returns
         -------
@@ -286,22 +286,22 @@ class UnsteadyAerodynamics:
         Cn_NC = 4*Kalpha*c/Uinf*(self.dalpha_qs_dt[i, t]-self.D[i, t]) #Non-circulatory loads
         self.Cn_P[i, t] = Cn_NC + Cn_C #Total unsteady loads
 
-        #### Non-linear TE seperation ####
+        #### Non-linear TE separation ####
         self.Dp[i, t] = self.Pressure_lag(self.Dp[i, t-1], ds, self.Cn_P[i, t]-self.Cn_P[i, t-1]) #Pressure lag deficiency
 
         alpha_f = (self.Cn_P[i, t]-self.Dp[i, t])/dCn_dalpha+alpha0
-        self.f[i, t] = self.f_sep(alpha_f, parameters=parameters) #Seperation point
+        self.f[i, t] = self.f_sep(alpha_f, parameters=parameters) #Separation point
 
         self.Dbl[i, t] = self.BL_lag(self.Dbl[i, t-1], ds, self.f[i, t]-self.f[i, t-1]) #Boundary layer lag deficiency
 
-        f_TE = self.f[i, t]-self.Dbl[i, t] #New seperation position
+        f_TE = self.f[i, t]-self.Dbl[i, t] #New separation position
 
-        Cn_f = dCn_dalpha*((1+np.sqrt(f_TE))/2)**2*(alpha_eq-alpha0)+Cn_NC #Total unsteady loads with TE seperation
+        Cn_f = dCn_dalpha*((1+np.sqrt(f_TE))/2)**2*(alpha_eq-alpha0)+Cn_NC #Total unsteady loads with TE separation
 
 
         if LE_sep:
 
-            #### LE seperation ####
+            #### LE separation ####
             self.tau_v[i, t] = self.Vortex_time(self.tau_v[i, t-1], self.Cn_P[i, t-1]-self.Dp[i, t-1], ds, self.dalpha_qs_dt[i, t]-self.dalpha_qs_dt[i, t-1]) #??? #Reduced time
 
             self.Cvortex[i, t] = Cn_C*(1-((1+np.sqrt(f_TE))/2)**2) #Forcing term
@@ -310,10 +310,10 @@ class UnsteadyAerodynamics:
 
             #### Vortex shedding ####
             self.Cn_vortex[i, t] = self.Vortex_shedding(self.Cn_vortex[i, t-1], ds, self.Cvortex[i, t]-self.Cvortex[i, t-1], self.tau_v[i, t-1]) #Vortex lift
-            self.Cn[i, t] = Cn_f+self.Cn_vortex[i, t] #Unsteady loads with TE and LE seperations
+            self.Cn[i, t] = Cn_f+self.Cn_vortex[i, t] #Unsteady loads with TE and LE separations
 
         else:
-            self.Cn[i, t] = Cn_f #Unsteady loads with TE seperation
+            self.Cn[i, t] = Cn_f #Unsteady loads with TE separation
 
 
 
