@@ -45,6 +45,7 @@ def Plotting_following_blade(res,mod_labels,save_name,rad_pos = [0.4,0.6,0.8],li
 
             else:
                 time = res[j].time/5
+            l0, = plt.plot(res[j].time,x[0,:],color=cols[j])
 
             line_handles.append(l0)
             try:
@@ -115,8 +116,8 @@ def Plotting_polars(res, rad_pos, omega,save_name):
     T = 2*np.pi/omega
     idx1 = np.argmin(np.abs(time-2*T))
     #idx1 = 0
-    idx2 = np.argmin(np.abs(time-4*T))+1
-    #idx2 = len(time)
+    # idx2 = np.argmin(np.abs(time-4*T))+1
+    idx2 = len(time)
     cols = ['b','g','r']
 
     idx_mu = np.zeros(len(rad_pos))

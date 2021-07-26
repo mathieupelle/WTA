@@ -29,7 +29,7 @@ U_0 = 10
 TSR_0 = 8
 Omega_0 = TSR_0*U_0/Geometry.radius
 #pitch =  Calc.getPitchAngle_fromCT(CT = 8/9,TSR = TSR_0) #Calculate the pitch angle corresponding to the optimal CT=8/9
-pitch = -6
+pitch = 0
 
 #Time and frequency settings
 k = 0
@@ -75,9 +75,9 @@ if saving:
     pickle.dump(Dyn1,file)
     file.close()
 
-Plotting_following_blade(Dyn1['results'],['Steady','BL_noLEsep','BL'],rad_pos=[0.4,0.8])#,lims=[6,10])
-Plotting_integral_quantities(Dyn1['results'],['Steady','BL_noLEsep','BL'])#,lims=[6,10])
-Plotting_polars(Dyn1['results'], rad_pos=[0.4,0.8], omega=1.6)
+Plotting_following_blade(Dyn1['results'],['Steady','BL_noLEsep','BL'],rad_pos=[0.4,0.8],save_name='org_noLims')#,lims=[6,10])
+Plotting_integral_quantities(Dyn1['results'],['Steady','BL_noLEsep','BL'],save_name='org_noLims')#,lims=[6,10])
+Plotting_polars(Dyn1['results'], rad_pos=[0.4,0.8], omega=1.6, save_name='org_noLims')
 
 #%% Case Dyn2: Dynamic inflow due to change in inflow velocity in time and azimuthal direction.
 

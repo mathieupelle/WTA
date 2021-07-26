@@ -83,7 +83,7 @@ class Rotor:
 class Results: #Create the variables to store the results from BEMT
     def __init__(self,N_radial,N_azimuth,N_time):
         self.N_time = N_time
-        self.a,self.ap,self.phi,self.alpha,self.cl,self.cd,self.f_nor,self.f_tan,self.f,self.f_tip,self.f_root,self.ite,self.chord,self.beta,self.mu,self.circulation,self.enthalpy_3,self.local_CT,self.local_CQ =  np.zeros((19,N_radial-1,N_azimuth-1,N_time))
+        self.a,self.ap,self.phi,self.alpha,self.cl,self.cd,self.f_nor,self.f_tan,self.f,self.f_tip,self.f_root,self.ite,self.chord,self.beta,self.mu,self.circulation,self.enthalpy_3,self.local_CT,self.local_CQ,self.v_rel =  np.zeros((20,N_radial-1,N_azimuth-1,N_time))
         self.azimuth = np.zeros(N_azimuth-1)
         self.CT, self.CP, self.CQ = np.zeros((3, self.N_time))
         self.UA_class = 0
@@ -380,8 +380,8 @@ class BEMT:
 
                         #Store all the results
                         [self.Results.a[i,j,t_idx],self.Results.ap[i,j,t_idx],self.Results.phi[i,j,t_idx],self.Results.alpha[i,j,t_idx],self.Results.cl[i,j,t_idx],
-                         self.Results.cd[i,j,t_idx],self.Results.f_nor[i,j,t_idx],self.Results.f_tan[i,j,t_idx],self.Results.f[i,j,t_idx],self.Results.f_tip[i,j,t_idx],self.Results.f_root[i,j,t_idx],self.Results.ite[i,j,t_idx],self.Results.local_CT[i,j,t_idx]] = \
-                            [a,ap,phi*180/np.pi,alpha*180/np.pi,cl,cd,f_nor,f_tan,f,f_tip,f_root,ite,CT]
+                         self.Results.cd[i,j,t_idx],self.Results.f_nor[i,j,t_idx],self.Results.f_tan[i,j,t_idx],self.Results.f[i,j,t_idx],self.Results.f_tip[i,j,t_idx],self.Results.f_root[i,j,t_idx],self.Results.ite[i,j,t_idx],self.Results.local_CT[i,j,t_idx],self.Results.v_rel[i,j,t_idx]] = \
+                            [a,ap,phi*180/np.pi,alpha*180/np.pi,cl,cd,f_nor,f_tan,f,f_tip,f_root,ite,CT,u_rel]
 
             #Integrate forces to get total CP, CT, and CQ
             self.Rotor.wind_speed = np.mean(conditions['wind_speed'][:, t_idx])
