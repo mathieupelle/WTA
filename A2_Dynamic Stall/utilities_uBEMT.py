@@ -239,14 +239,14 @@ class BEMT:
                     N_azimuth = 2 #Non-yawed case
         else:
             N_azimuth = 2 #Non-yawed case
-            
+
         #Based on the new number of azimuthal points, redefine the azimuthal spacing
-        self.Rotor.azimuth = np.linspace(0,2*np.pi,N_azimuth)       
-        
+        self.Rotor.azimuth = np.linspace(0,2*np.pi,N_azimuth)
+
         #Initialise results class
         self.Results = Results(self.Rotor.N_radial,self.Rotor.N_azimuth,len(time))
         self.Results.time = time #Save time array in case we change it
-        
+
 
         if DS_Model != 'Steady':
             unsteady_polar = UnsteadyAerodynamics(time, self.Rotor.N_radial, N_azimuth)
@@ -300,7 +300,7 @@ class BEMT:
                             #Take values from polar in the steady case
                             if DS_Model == 'Steady':
                                 [cl,cd] = self.AirfoilCoefficients(alpha)
-                            #Use dynamic stall if required 
+                            #Use dynamic stall if required
                             elif DS_Model =='BL_noLEsep' or DS_Model =='BL':
                                 airfoil = {'dCn_dalpha':2*np.pi, 'chord':chord, 'alpha0':-2} #Assign values of the section of analysis
                                 alpha_array = np.deg2rad(self.Results.alpha[i,j-1,:]) #Aoa time-history of the previous azimuthal position (to account for blade rotation)
@@ -312,7 +312,7 @@ class BEMT:
                                 #Run the dynamic stall module
                                 unsteady_polar.Beddoes_Leishman(airfoil, i, j, t_idx, alpha_array, np.zeros(np.shape(time)), u_rel, LE_sep=LE_sep)
                                 cn = unsteady_polar.Cn[i,j,t_idx] #Dynamic stall outputs normal force coefficient in blade coordinates
-                                cl = cn*np.cos(alpha) #Transform to lift direction 
+                                cl = cn*np.cos(alpha) #Transform to lift direction
                                 [_,cd] = self.AirfoilCoefficients(alpha) #Simply take drag from steady polar
                             else:
                                 raise Exception('Invalid dynamic stall model?')
@@ -338,7 +338,7 @@ class BEMT:
                                      a_new,v_int = self.Oye(a*f, self.Results.local_CT[i,j,t_idx-1], CT, v_int, mu*self.Rotor.radius, dt, self.Rotor.wind_speed)
 
                                  else:
-                                     raise Exception('You have not selected a dynamic inflow model.')
+                                     raise Exception('Its got a C in it. Also you have not selected a model')
 
                             #Apply the tip and root loss correction factor if wanted
                             if Prandtl_correction:
@@ -656,10 +656,10 @@ class BEMT:
 
         #Interpolate the pitch value fiven the desired CT and return it
         return np.interp(CT,CT_arr,TSR_arr)
-    
+
     def get_newConditions(self,cond,time_new,time_org):
         """
-        Need this amazing function to interpolate the new conditions given 
+        Need this amazing function to interpolate the new conditions given
         the corrected time array that matches the azmithal discretisation
         """
         print(time_new.shape)
@@ -669,13 +669,13 @@ class BEMT:
         cond['pitch_angle'] = np.interp(time_new,time_org,cond['pitch_angle'])
         cond['TSR'] = np.interp(time_new,time_org,cond['TSR'])
         cond['yaw_angle'] = np.interp(time_new,time_org,cond['yaw_angle'])
-        
+
         #Workarounds for the wind speed because we have azimuthal discretisation
         old_wsp = cond['wind_speed']
         cond['wind_speed'] = np.zeros((old_wsp.shape[0],len(time_new)))
         for i in range(len(old_wsp)):
             cond['wind_speed'][i,:] = np.interp(time_new,time_org,np.squeeze(old_wsp[i,:]))
-        
+
         return cond
 
 
@@ -1258,9 +1258,9 @@ class UnsteadyAerodynamics:
         self.dalpha_qs_dt[i, j, t] = (alpha_qs2-alpha_qs1)/dt
 
         #### Unsteady attached flow ####
-        self.X[i, j, t], self.Y[i, j, t] = self.Duhamel(self.X[i, j, t-1], self.Y[i, j, t-1], ds, alpha_qs2-alpha_qs1) #Lag states
-        delta_dalpha_qs_dt = self.dalpha_qs_dt[i, j, t]- self.dalpha_qs_dt[i, j, t-1]
-        self.D[i, j, t], Kalpha = self.Deficiency_NC(self.D[i, j, t-1], delta_dalpha_qs_dt, dt, c) #Deficiency for NC loads
+        self.X[i, j, t], self.Y[i, j, t] = self.Duhamel(self.X[i, j-1, t-1], self.Y[i, j-1, t-1], ds, alpha_qs2-alpha_qs1) #Lag states
+        delta_dalpha_qs_dt = self.dalpha_qs_dt[i, j, t]- self.dalpha_qs_dt[i, j-1, t-1]
+        self.D[i, j, t], Kalpha = self.Deficiency_NC(self.D[i, j-1, t-1], delta_dalpha_qs_dt, dt, c) #Deficiency for NC loads
 
         alpha_eq = alpha_qs2 - self.X[i, j, t] - self.Y[i, j, t] #Equivalent AoA (lag from wake effects)
         Cn_C = dCn_dalpha*(alpha_eq-alpha0) #Circulatory loads
@@ -1268,12 +1268,12 @@ class UnsteadyAerodynamics:
         self.Cn_P[i, j, t] = Cn_NC + Cn_C #Total unsteady loads
 
         #### Non-linear TE seperation ####
-        self.Dp[i, j, t] = self.Pressure_lag(self.Dp[i, j, t-1], ds, self.Cn_P[i, j, t]-self.Cn_P[i, j, t-1]) #Pressure lag deficiency
+        self.Dp[i, j, t] = self.Pressure_lag(self.Dp[i, j-1, t-1], ds, self.Cn_P[i, j, t]-self.Cn_P[i, j-1, t-1]) #Pressure lag deficiency
 
         alpha_f = (self.Cn_P[i, j, t]-self.Dp[i, j, t])/dCn_dalpha+alpha0
         self.f[i, j, t] = self.f_sep(alpha_f, parameters=parameters) #Seperation point
 
-        self.Dbl[i, j, t] = self.BL_lag(self.Dbl[i, j, t-1], ds, self.f[i, j, t]-self.f[i, j, t-1]) #Boundary layer lag deficiency
+        self.Dbl[i, j, t] = self.BL_lag(self.Dbl[i, j-1, t-1], ds, self.f[i, j, t]-self.f[i, j-1, t-1]) #Boundary layer lag deficiency
 
         f_TE = self.f[i, j, t]-self.Dbl[i, j, t] #New seperation position
 
@@ -1283,14 +1283,14 @@ class UnsteadyAerodynamics:
         if LE_sep:
 
             #### LE seperation ####
-            self.tau_v[i, j, t] = self.Vortex_time(self.tau_v[i, j, t-1], self.Cn_P[i, j, t-1]-self.Dp[i, j, t-1], ds, self.dalpha_qs_dt[i, j, t]-self.dalpha_qs_dt[i, j, t-1]) #??? #Reduced time
+            self.tau_v[i, j, t] = self.Vortex_time(self.tau_v[i, j-1, t-1], self.Cn_P[i, j-1, t-1]-self.Dp[i, j-1, t-1], ds, self.dalpha_qs_dt[i, j, t]-self.dalpha_qs_dt[i, j-1, t-1]) #??? #Reduced time
 
             self.Cvortex[i, j, t] = Cn_C*(1-((1+np.sqrt(f_TE))/2)**2) #Forcing term
             if t==0:
                 self.Cn_vortex[i, j, t] = self.Cvortex[i, j, t]
 
             #### Vortex shedding ####
-            self.Cn_vortex[i, j, t] = self.Vortex_shedding(self.Cn_vortex[i, j, t-1], ds, self.Cvortex[i, j, t]-self.Cvortex[i, j, t-1], self.tau_v[i, j, t-1]) #Vortex lift
+            self.Cn_vortex[i, j, t] = self.Vortex_shedding(self.Cn_vortex[i, j-1, t-1], ds, self.Cvortex[i, j, t]-self.Cvortex[i, j-1, t-1], self.tau_v[i, j-1, t-1]) #Vortex lift
             self.Cn[i, j, t] = Cn_f+self.Cn_vortex[i, j, t] #Unsteady loads with TE and LE seperations
 
         else:
